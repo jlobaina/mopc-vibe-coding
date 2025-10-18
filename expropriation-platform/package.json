@@ -4,8 +4,10 @@
   "description": "Plataforma digital para la gestión de casos de expropiación en la República Dominicana",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
+    "dev": "npm run check-config && next dev",
+    "dev:simple": "next dev",
+    "build": "npm run check-config && next build",
+    "check-config": "node scripts/check-port-config.js",
     "start": "next start",
     "lint": "next lint",
     "lint:fix": "next lint --fix",

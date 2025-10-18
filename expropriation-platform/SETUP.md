@@ -153,6 +153,7 @@ If port 3000 is already in use:
    ```bash
    PORT=3001 npm run dev
    ```
+   *Note: If you use a different port, make sure to update NEXTAUTH_URL and APP_URL in your .env.local file to match.*
 
 ## 📚 Next Steps
 

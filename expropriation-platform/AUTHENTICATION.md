@@ -64,7 +64,7 @@ src/
 
 ```env
 # NextAuth.js
-NEXTAUTH_URL="http://localhost:3001"
+NEXTAUTH_URL="http://localhost:3000"
 NEXTAUTH_SECRET="+8xdNjOeWEkO8HTSwtphWzJj5KAS6Y1QN4BKkXkTnak="
 
 # Base de datos
@@ -246,7 +246,7 @@ Componente para proteger rutas a nivel de componente:
 
 2. **Acceder a login**:
    ```
-   http://localhost:3001/login
+   http://localhost:3000/login
    ```
 
 3. **Probar diferentes roles**:
@@ -256,7 +256,7 @@ Componente para proteger rutas a nivel de componente:
 
 4. **Probar recuperación de contraseña**:
    ```
-   http://localhost:3001/forgot-password
+   http://localhost:3000/forgot-password
    ```
 
 ## 🔄 Flujo de Trabajo Futuro
