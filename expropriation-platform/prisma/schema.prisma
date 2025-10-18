@@ -1,0 +1,291 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Department {
+  id        String   @id @default(cuid())
+  name      String
+  code      String   @unique
+  parentId  String?
+  parent    Department? @relation("DepartmentHierarchy", fields: [parentId], references: [id])
+  children  Department[] @relation("DepartmentHierarchy")
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  users     User[]
+  cases     Case[]
+
+  @@map("departments")
+}
+
+model Role {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  permissions Json     // Store permissions as JSON for flexibility
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  users User[]
+
+  @@map("roles")
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  username     String    @unique
+  passwordHash String
+  firstName    String
+  lastName     String
+  phone        String?
+  avatar       String?
+  isActive     Boolean   @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  // Relations
+  departmentId String
+  department   Department @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+
+  roleId       String
+  role         Role @relation(fields: [roleId], references: [id], onDelete: Restrict)
+
+  // Case relationships
+  createdCases   Case[]    @relation("CaseCreator")
+  assignedCases  Case[]    @relation("CaseAssignee")
+  supervisedCases Case[]   @relation("CaseSupervisor")
+
+  // Activity tracking
+  activities     Activity[]
+  caseHistories  CaseHistory[]
+  documents      Document[]
+  notifications  Notification[]
+  assignments    CaseAssignment[]
+
+  @@map("users")
+}
+
+model Case {
+  id                String   @id @default(cuid())
+  caseNumber        String   @unique
+  title             String
+  description       String?
+  currentStage      String   @default("initial_review")
+  priority          String   @default("medium") // low, medium, high, urgent
+  status            String   @default("active") // active, completed, archived, suspended
+
+  // Dates
+  startDate         DateTime @default(now())
+  expectedEndDate   DateTime?
+  actualEndDate     DateTime?
+
+  // Location
+  locationAddress   String
+  locationCity      String
+  locationProvince  String
+  coordinates       String? // GPS coordinates
+
+  // Financial
+  estimatedValue    Float?
+  actualValue       Float?
+
+  // Progress tracking
+  progressPercentage Float @default(0)
+
+  // Metadata
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  departmentId String
+  department   Department @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+
+  createdById    String
+  createdBy      User @relation("CaseCreator", fields: [createdById], references: [id])
+
+  assignedToId   String?
+  assignedTo     User? @relation("CaseAssignee", fields: [assignedToId], references: [id])
+
+  supervisedById String?
+  supervisedBy   User? @relation("CaseSupervisor", fields: [supervisedById], references: [id])
+
+  // Related data
+  documents      Document[]
+  histories      CaseHistory[]
+  activities     Activity[]
+  meetings       TechnicalMeeting[]
+  assignments    CaseAssignment[]
+
+  @@map("cases")
+}
+
+model Document {
+  id           String   @id @default(cuid())
+  title        String
+  description  String?
+  fileName     String
+  filePath     String
+  fileSize     Int
+  mimeType     String
+  version      Int      @default(1)
+  isPublic     Boolean  @default(false)
+  tags         String?  // Comma-separated tags
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  caseId       String
+  case         Case @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  uploadedById String
+  uploadedBy   User @relation(fields: [uploadedById], references: [id])
+
+  // Version history
+  parentId     String?
+  parent       Document? @relation("DocumentVersion", fields: [parentId], references: [id])
+  children     Document[] @relation("DocumentVersion")
+
+  @@map("documents")
+}
+
+model CaseHistory {
+  id          String   @id @default(cuid())
+  previousStage String?
+  newStage    String
+  reason      String?
+  notes       String?
+  duration    Int?     // Duration in days at previous stage
+
+  createdAt   DateTime @default(now())
+
+  // Relations
+  caseId      String
+  case        Case @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  changedById String
+  changedBy   User @relation(fields: [changedById], references: [id])
+
+  @@map("case_histories")
+}
+
+model Activity {
+  id          String   @id @default(cuid())
+  action      String   // created, updated, deleted, assigned, etc.
+  entityType  String   // case, document, user, etc.
+  entityId    String
+  description String?
+  metadata    Json?    // Additional data about the activity
+
+  createdAt   DateTime @default(now())
+
+  // Relations
+  userId      String
+  user        User @relation(fields: [userId], references: [id])
+
+  caseId      String?
+  case        Case? @relation(fields: [caseId], references: [id])
+
+  @@map("activities")
+}
+
+model CaseAssignment {
+  id         String   @id @default(cuid())
+  type       String   // analyst, reviewer, approver, etc.
+  isActive   Boolean  @default(true)
+  assignedAt DateTime @default(now())
+
+  // Relations
+  caseId     String
+  case       Case @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  userId     String
+  user       User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([caseId, userId, type])
+  @@map("case_assignments")
+}
+
+model TechnicalMeeting {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  meetingType String   // site_visit, coordination, decision, etc.
+  location    String?
+  virtual     Boolean  @default(false)
+  meetingUrl  String?
+
+  // Dates and times
+  scheduledFor DateTime
+  duration     Int      // Duration in minutes
+
+  // Status
+  status      String   @default("scheduled") // scheduled, in_progress, completed, cancelled
+
+  // Participants
+  requiredParticipants Int @default(0)
+  actualParticipants   Int @default(0)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  caseId      String
+  case        Case @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  // Meeting data (stored as JSON for flexibility)
+  agenda      Json?
+  minutes     Json?
+  decisions   Json?
+
+  @@map("technical_meetings")
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  title     String
+  message   String
+  type      String   // info, warning, error, success
+  isRead    Boolean  @default(false)
+
+  // Entity reference
+  entityType String? // case, meeting, document, etc.
+  entityId   String?
+
+  createdAt DateTime @default(now())
+  readAt    DateTime?
+
+  // Relations
+  userId    String
+  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
+
+model SystemConfig {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String
+  type      String   @default("string") // string, number, boolean, json
+  category  String
+  description String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("system_configs")
+}
