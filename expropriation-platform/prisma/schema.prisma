@@ -121,17 +121,44 @@ model Department {
   parentId  String?
   parent    Department?  @relation("DepartmentHierarchy", fields: [parentId], references: [id])
   children  Department[] @relation("DepartmentHierarchy")
-  isActive  Boolean      @default(true)
-  createdAt DateTime     @default(now())
-  updatedAt DateTime     @updatedAt
+
+  // Department details
+  description String?
+  headUserId  String?    // Department head/manager
+  contactInfo Json?      // Contact information (email, phone, address)
+  location    Json?      // Physical location details
+  type        String?    // Department type/classification
+
+  // Status management
+  isActive      Boolean @default(true)
+  isSuspended   Boolean @default(false)
+  suspensionReason String?
+  suspendedAt   DateTime?
+  suspendedBy   String?
+
+  // Statistics and metadata
+  userCapacity  Int?     // Maximum user capacity
+  budget        Float?   // Department budget
+  operatingHours Json?   // Operating hours/schedule
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Relations
   users                   User[]
   cases                   Case[]
   userDepartmentAssignments UserDepartmentAssignment[]
+  headUser                User?    @relation("DepartmentHead", fields: [headUserId], references: [id])
+  departmentStageAssignments DepartmentStageAssignment[]
+  departmentPermissions DepartmentPermission[]
+  departmentTransfers    DepartmentTransfer[] @relation("SourceDepartment")
+  destinationTransfers   DepartmentTransfer[] @relation("DestinationDepartment")
 
   @@index([parentId])
   @@index([isActive])
+  @@index([isSuspended])
+  @@index([headUserId])
+  @@index([code])
   @@map("departments")
 }
 
@@ -148,6 +175,7 @@ model Permission {
 
   // Relations
   rolePermissions RolePermission[]
+  departmentPermissions DepartmentPermission[]
 
   @@map("permissions")
 }
@@ -267,6 +295,8 @@ model User {
   sessions      UserSession[]
   passwordHistories PasswordHistory[]
   departmentAssignments UserDepartmentAssignment[]
+  headOfDepartments Department[] @relation("DepartmentHead")
+  departmentTransfers DepartmentTransfer[]
 
   // NextAuth.js relations
   accounts      Account[]
@@ -609,4 +639,75 @@ model SystemConfig {
   updatedAt DateTime @updatedAt
 
   @@map("system_configs")
+}
+
+// Department-Stage Assignment Model
+model DepartmentStageAssignment {
+  id           String     @id @default(cuid())
+  departmentId String
+  stage        CaseStage
+  isActive     Boolean    @default(true)
+  assignedAt   DateTime   @default(now())
+  assignedBy   String?
+
+  // Relations
+  department Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+
+  @@unique([departmentId, stage])
+  @@index([departmentId])
+  @@index([stage])
+  @@map("department_stage_assignments")
+}
+
+// Department Permission Model
+model DepartmentPermission {
+  id           String       @id @default(cuid())
+  departmentId String
+  permissionId String
+  isGranted    Boolean      @default(true)
+  assignedAt   DateTime     @default(now())
+  assignedBy   String?
+  expiresAt    DateTime?
+
+  // Relations
+  department Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([departmentId, permissionId])
+  @@index([departmentId])
+  @@index([permissionId])
+  @@map("department_permissions")
+}
+
+// Department Transfer Model (for user transfers between departments)
+model DepartmentTransfer {
+  id                String   @id @default(cuid())
+  userId            String
+  sourceDepartmentId String
+  destinationDepartmentId String
+  transferType      String   // PROMOTION, DEMOTION, LATERAL, TEMPORARY
+  reason            String?
+  effectiveDate     DateTime @default(now())
+  scheduledFor      DateTime?
+  completedAt       DateTime?
+  status            String   @default("PENDING") // PENDING, IN_PROGRESS, COMPLETED, CANCELLED
+  approvedBy        String?
+  approvedAt        DateTime?
+  notes             String?
+  metadata          Json?    // Additional transfer information
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sourceDepartment Department @relation("SourceDepartment", fields: [sourceDepartmentId], references: [id])
+  destinationDepartment Department @relation("DestinationDepartment", fields: [destinationDepartmentId], references: [id])
+
+  @@index([userId])
+  @@index([sourceDepartmentId])
+  @@index([destinationDepartmentId])
+  @@index([status])
+  @@index([effectiveDate])
+  @@map("department_transfers")
 }

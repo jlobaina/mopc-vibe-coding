@@ -10,7 +10,35 @@ const createDepartmentSchema = z.object({
   name: z.string().min(1, 'El nombre del departamento es requerido'),
   code: z.string().min(1, 'El código del departamento es requerido'),
   parentId: z.string().optional(),
+  description: z.string().optional(),
+  headUserId: z.string().optional(),
+  contactInfo: z.object({
+    email: z.string().email().optional(),
+    phone: z.string().optional(),
+    address: z.string().optional(),
+  }).optional(),
+  location: z.object({
+    building: z.string().optional(),
+    floor: z.string().optional(),
+    office: z.string().optional(),
+    coordinates: z.object({
+      lat: z.number().optional(),
+      lng: z.number().optional(),
+    }).optional(),
+  }).optional(),
+  type: z.string().optional(),
   isActive: z.boolean().default(true),
+  userCapacity: z.number().positive().optional(),
+  budget: z.number().positive().optional(),
+  operatingHours: z.object({
+    monday: z.string().optional(),
+    tuesday: z.string().optional(),
+    wednesday: z.string().optional(),
+    thursday: z.string().optional(),
+    friday: z.string().optional(),
+    saturday: z.string().optional(),
+    sunday: z.string().optional(),
+  }).optional(),
 });
 
 // Schema for department updates
@@ -56,6 +84,9 @@ export async function GET(request: NextRequest) {
       include: {
         parent: {
           select: { id: true, name: true, code: true },
+        },
+        headUser: {
+          select: { id: true, firstName: true, lastName: true, email: true },
         },
         children: includeHierarchy ? {
           select: { id: true, name: true, code: true, isActive: true },
@@ -168,12 +199,29 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // If headUserId is provided, validate the user exists
+    if (validatedData.headUserId) {
+      const headUser = await prisma.user.findUnique({
+        where: { id: validatedData.headUserId },
+      });
+
+      if (!headUser) {
+        return NextResponse.json(
+          { error: 'Usuario designado como jefe no encontrado' },
+          { status: 400 }
+        );
+      }
+    }
+
     // Create department
     const department = await prisma.department.create({
       data: validatedData,
       include: {
         parent: {
           select: { id: true, name: true, code: true },
+        },
+        headUser: {
+          select: { id: true, firstName: true, lastName: true, email: true },
         },
         children: {
           select: { id: true, name: true, code: true, isActive: true },
