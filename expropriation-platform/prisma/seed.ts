@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, CaseStage, CaseStatus, Priority } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
@@ -223,113 +223,7 @@ async function main() {
     },
   });
 
-  // Create sample cases
-  const sampleCase1 = await prisma.case.upsert({
-    where: { caseNumber: 'EXP-2024-0001' },
-    update: {},
-    create: {
-      caseNumber: 'EXP-2024-0001',
-      title: 'Expropiación para construcción de carretera',
-      description: 'Caso de expropiación para la construcción de la nueva carretera Duarte-KM9',
-      currentStage: 'initial_review',
-      priority: 'high',
-      status: 'active',
-      locationAddress: 'Calle Duarte #123',
-      locationCity: 'Santo Domingo',
-      locationProvince: 'Distrito Nacional',
-      estimatedValue: 5000000,
-      departmentId: legalDept.id,
-      createdById: deptAdmin.id,
-      assignedToId: analyst.id,
-    },
-  });
-
-  const sampleCase2 = await prisma.case.upsert({
-    where: { caseNumber: 'EXP-2024-0002' },
-    update: {},
-    create: {
-      caseNumber: 'EXP-2024-0002',
-      title: 'Expropiación para proyecto hidroeléctrico',
-      description: 'Adquisición de terrenos para la construcción de una planta hidroeléctrica en la región sur',
-      currentStage: 'technical_evaluation',
-      priority: 'medium',
-      status: 'active',
-      locationAddress: 'Carretera Sánchez #456',
-      locationCity: 'Barahona',
-      locationProvince: 'Barahona',
-      estimatedValue: 12000000,
-      departmentId: technicalDept.id,
-      createdById: deptAdmin.id,
-      assignedToId: analyst.id,
-    },
-  });
-
-  const sampleCase3 = await prisma.case.upsert({
-    where: { caseNumber: 'EXP-2024-0003' },
-    update: {},
-    create: {
-      caseNumber: 'EXP-2024-0003',
-      title: 'Expropiación para expansión de puerto',
-      description: 'Expansión de las instalaciones del puerto de Santo Domingo para aumentar capacidad de carga',
-      currentStage: 'legal_review',
-      priority: 'urgent',
-      status: 'active',
-      locationAddress: 'Avenida George Washington #789',
-      locationCity: 'Santo Domingo',
-      locationProvince: 'Distrito Nacional',
-      estimatedValue: 25000000,
-      departmentId: legalDept.id,
-      createdById: deptAdmin.id,
-      assignedToId: deptAdmin.id,
-      supervisedById: superAdmin.id,
-    },
-  });
-
-  const sampleCase4 = await prisma.case.upsert({
-    where: { caseNumber: 'EXP-2023-0999' },
-    update: {},
-    create: {
-      caseNumber: 'EXP-2023-0999',
-      title: 'Expropiación para línea de transmisión eléctrica',
-      description: 'Instalación de torres de alta tensión para interconexión eléctrica regional',
-      currentStage: 'completed',
-      priority: 'low',
-      status: 'completed',
-      locationAddress: 'Carretera Mella #321',
-      locationCity: 'Santiago',
-      locationProvince: 'Santiago',
-      estimatedValue: 3500000,
-      actualValue: 3200000,
-      startDate: new Date('2023-01-15'),
-      expectedEndDate: new Date('2023-06-30'),
-      actualEndDate: new Date('2023-07-15'),
-      progressPercentage: 100,
-      departmentId: technicalDept.id,
-      createdById: superAdmin.id,
-      assignedToId: analyst.id,
-    },
-  });
-
-  const sampleCase5 = await prisma.case.upsert({
-    where: { caseNumber: 'EXP-2024-0004' },
-    update: {},
-    create: {
-      caseNumber: 'EXP-2024-0004',
-      title: 'Expropiación para parque nacional',
-      description: 'Creación de un área protegida y parque nacional en la zona este del país',
-      currentStage: 'public_consultation',
-      priority: 'medium',
-      status: 'active',
-      locationAddress: 'Calle Principal #100',
-      locationCity: 'Higüey',
-      locationProvince: 'La Altagracia',
-      estimatedValue: 8000000,
-      departmentId: legalDept.id,
-      createdById: deptAdmin.id,
-      assignedToId: analyst.id,
-      supervisedById: deptAdmin.id,
-    },
-  });
+  // Sample cases will be created later after authentication is tested
 
   console.log('✅ Database seeding completed successfully!');
   console.log('');
@@ -343,12 +237,8 @@ async function main() {
   console.log('   - LEGAL (Child of MOPC)');
   console.log('   - TECHNICAL (Child of MOPC)');
   console.log('');
-  console.log('📋 Created sample cases:');
-  console.log(`   - ${sampleCase1.caseNumber}: ${sampleCase1.title} (${sampleCase1.currentStage})`);
-  console.log(`   - ${sampleCase2.caseNumber}: ${sampleCase2.title} (${sampleCase2.currentStage})`);
-  console.log(`   - ${sampleCase3.caseNumber}: ${sampleCase3.title} (${sampleCase3.currentStage})`);
-  console.log(`   - ${sampleCase4.caseNumber}: ${sampleCase4.title} (${sampleCase4.currentStage})`);
-  console.log(`   - ${sampleCase5.caseNumber}: ${sampleCase5.title} (${sampleCase5.currentStage})`);
+  console.log('⚙️ Created system configuration');
+  console.log('📋 Sample cases will be created later');
 }
 
 main()

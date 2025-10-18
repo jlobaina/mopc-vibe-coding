@@ -10,98 +10,272 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// Enums for type safety and consistency
+enum UserRole {
+  SUPER_ADMIN
+  DEPARTMENT_ADMIN
+  ANALYST
+  SUPERVISOR
+  OBSERVER
+  TECHNICAL_MEETING_COORDINATOR
+}
+
+enum CaseStatus {
+  ACTIVE
+  COMPLETED
+  ARCHIVED
+  SUSPENDED
+  CANCELLED
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum CaseStage {
+  INITIAL_REVIEW
+  LEGAL_REVIEW
+  TECHNICAL_EVALUATION
+  APPRAISAL
+  NEGOTIATION
+  DOCUMENTATION
+  PUBLIC_CONSULTATION
+  APPROVAL
+  PAYMENT
+  TRANSFER
+  FINAL_CLOSURE
+  QUALITY_CONTROL
+  AUDIT
+  REPORTING
+  ARCHIVE_PREPARATION
+  COMPLETED
+  SUSPENDED
+  CANCELLED
+}
+
+enum ActivityType {
+  CREATED
+  UPDATED
+  DELETED
+  ASSIGNED
+  REASSIGNED
+  APPROVED
+  REJECTED
+  COMMENTED
+  UPLOADED
+  DOWNLOADED
+  VIEWED
+  ARCHIVED
+  RESTORED
+  EXPORTED
+  IMPORTED
+  LOGIN
+  LOGOUT
+}
+
+enum MeetingType {
+  SITE_VISIT
+  COORDINATION
+  DECISION
+  PUBLIC_CONSULTATION
+  TECHNICAL_REVIEW
+  LEGAL_REVIEW
+  NEGOTIATION
+  STATUS_UPDATE
+}
+
+enum NotificationType {
+  INFO
+  WARNING
+  ERROR
+  SUCCESS
+  TASK_ASSIGNED
+  DEADLINE_REMINDER
+  STATUS_UPDATE
+  SYSTEM_ANNOUNCEMENT
+}
+
+enum PermissionType {
+  READ
+  WRITE
+  DELETE
+  ASSIGN
+  SUPERVISE
+  EXPORT
+  IMPORT
+  MANAGE_USERS
+  MANAGE_DEPARTMENTS
+  SYSTEM_CONFIG
+  VIEW_REPORTS
+  APPROVE_DECISIONS
+  COORDINATE_MEETINGS
+}
+
 model Department {
-  id        String   @id @default(cuid())
+  id        String       @id @default(cuid())
   name      String
-  code      String   @unique
+  code      String       @unique
   parentId  String?
-  parent    Department? @relation("DepartmentHierarchy", fields: [parentId], references: [id])
+  parent    Department?  @relation("DepartmentHierarchy", fields: [parentId], references: [id])
   children  Department[] @relation("DepartmentHierarchy")
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  isActive  Boolean      @default(true)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
 
   // Relations
-  users     User[]
-  cases     Case[]
+  users User[]
+  cases Case[]
 
+  @@index([parentId])
+  @@index([isActive])
   @@map("departments")
+}
+
+model Permission {
+  id          String         @id @default(cuid())
+  name        String         @unique
+  type        PermissionType
+  description String?
+  resource    String? // e.g., "cases", "users", "departments", "reports"
+  action      String? // e.g., "create", "read", "update", "delete"
+  isActive    Boolean        @default(true)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  // Relations
+  rolePermissions RolePermission[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  id        String   @id @default(cuid())
+  isGranted Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  // Relations
+  roleId String
+  role   Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  permissionId String
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+  @@map("role_permissions")
 }
 
 model Role {
   id          String   @id @default(cuid())
   name        String   @unique
   description String?
-  permissions Json     // Store permissions as JSON for flexibility
+  permissions Json // Store permissions as JSON for flexibility
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   // Relations
-  users User[]
+  users           User[]
+  rolePermissions RolePermission[]
 
   @@map("roles")
 }
 
 model User {
-  id           String    @id @default(cuid())
-  email        String    @unique
-  username     String    @unique
-  passwordHash String
-  firstName    String
-  lastName     String
-  phone        String?
-  avatar       String?
-  isActive     Boolean   @default(true)
-  lastLoginAt  DateTime?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  id                   String    @id @default(cuid())
+  email                String    @unique
+  username             String    @unique
+  passwordHash         String
+  firstName            String
+  lastName             String
+  phone                String?
+  avatar               String?
+  isActive             Boolean   @default(true)
+  lastLoginAt          DateTime?
+  passwordResetToken   String?
+  passwordResetExpires DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 
   // Relations
   departmentId String
   department   Department @relation(fields: [departmentId], references: [id], onDelete: Restrict)
 
-  roleId       String
-  role         Role @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  roleId String
+  role   Role   @relation(fields: [roleId], references: [id], onDelete: Restrict)
 
   // Case relationships
-  createdCases   Case[]    @relation("CaseCreator")
-  assignedCases  Case[]    @relation("CaseAssignee")
-  supervisedCases Case[]   @relation("CaseSupervisor")
+  createdCases    Case[] @relation("CaseCreator")
+  assignedCases   Case[] @relation("CaseAssignee")
+  supervisedCases Case[] @relation("CaseSupervisor")
 
   // Activity tracking
-  activities     Activity[]
-  caseHistories  CaseHistory[]
-  documents      Document[]
-  notifications  Notification[]
-  assignments    CaseAssignment[]
+  activities    Activity[]
+  caseHistories CaseHistory[]
+  documents     Document[]
+  notifications Notification[]
+  assignments   CaseAssignment[]
+  sessions      UserSession[]
 
+  // NextAuth.js relations
+  accounts      Account[]
+  sessions_auth Session[]
+
+  @@index([email])
+  @@index([username])
+  @@index([departmentId])
+  @@index([roleId])
+  @@index([isActive])
+  @@index([lastLoginAt])
   @@map("users")
 }
 
+model UserSession {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  ipAddress    String?
+  userAgent    String?
+  isActive     Boolean  @default(true)
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  lastAccessAt DateTime @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([sessionToken])
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("user_sessions")
+}
+
 model Case {
-  id                String   @id @default(cuid())
-  caseNumber        String   @unique
-  title             String
-  description       String?
-  currentStage      String   @default("initial_review")
-  priority          String   @default("medium") // low, medium, high, urgent
-  status            String   @default("active") // active, completed, archived, suspended
+  id           String     @id @default(cuid())
+  caseNumber   String     @unique
+  title        String
+  description  String?
+  currentStage CaseStage  @default(INITIAL_REVIEW)
+  priority     Priority   @default(MEDIUM)
+  status       CaseStatus @default(ACTIVE)
 
   // Dates
-  startDate         DateTime @default(now())
-  expectedEndDate   DateTime?
-  actualEndDate     DateTime?
+  startDate       DateTime  @default(now())
+  expectedEndDate DateTime?
+  actualEndDate   DateTime?
 
   // Location
-  locationAddress   String
-  locationCity      String
-  locationProvince  String
-  coordinates       String? // GPS coordinates
+  locationAddress  String
+  locationCity     String
+  locationProvince String
+  coordinates      String? // GPS coordinates
 
   // Financial
-  estimatedValue    Float?
-  actualValue       Float?
+  estimatedValue Float?
+  actualValue    Float?
 
   // Progress tracking
   progressPercentage Float @default(0)
@@ -114,174 +288,231 @@ model Case {
   departmentId String
   department   Department @relation(fields: [departmentId], references: [id], onDelete: Restrict)
 
-  createdById    String
-  createdBy      User @relation("CaseCreator", fields: [createdById], references: [id])
+  createdById String
+  createdBy   User   @relation("CaseCreator", fields: [createdById], references: [id])
 
-  assignedToId   String?
-  assignedTo     User? @relation("CaseAssignee", fields: [assignedToId], references: [id])
+  assignedToId String?
+  assignedTo   User?   @relation("CaseAssignee", fields: [assignedToId], references: [id])
 
   supervisedById String?
-  supervisedBy   User? @relation("CaseSupervisor", fields: [supervisedById], references: [id])
+  supervisedBy   User?   @relation("CaseSupervisor", fields: [supervisedById], references: [id])
 
   // Related data
-  documents      Document[]
-  histories      CaseHistory[]
-  activities     Activity[]
-  meetings       TechnicalMeeting[]
-  assignments    CaseAssignment[]
+  documents   Document[]
+  histories   CaseHistory[]
+  activities  Activity[]
+  meetings    TechnicalMeeting[]
+  assignments CaseAssignment[]
 
+  @@index([caseNumber])
+  @@index([currentStage])
+  @@index([priority])
+  @@index([status])
+  @@index([departmentId])
+  @@index([createdById])
+  @@index([assignedToId])
+  @@index([supervisedById])
+  @@index([createdAt])
+  @@index([startDate])
+  @@index([expectedEndDate])
   @@map("cases")
 }
 
 model Document {
-  id           String   @id @default(cuid())
-  title        String
-  description  String?
-  fileName     String
-  filePath     String
-  fileSize     Int
-  mimeType     String
-  version      Int      @default(1)
-  isPublic     Boolean  @default(false)
-  tags         String?  // Comma-separated tags
+  id          String  @id @default(cuid())
+  title       String
+  description String?
+  fileName    String
+  filePath    String
+  fileSize    Int
+  mimeType    String
+  version     Int     @default(1)
+  isPublic    Boolean @default(false)
+  tags        String? // Comma-separated tags
 
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Relations
-  caseId       String
-  case         Case @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  caseId String
+  case   Case   @relation(fields: [caseId], references: [id], onDelete: Cascade)
 
   uploadedById String
-  uploadedBy   User @relation(fields: [uploadedById], references: [id])
+  uploadedBy   User   @relation(fields: [uploadedById], references: [id])
 
   // Version history
-  parentId     String?
-  parent       Document? @relation("DocumentVersion", fields: [parentId], references: [id])
-  children     Document[] @relation("DocumentVersion")
+  parentId String?
+  parent   Document?  @relation("DocumentVersion", fields: [parentId], references: [id])
+  children Document[] @relation("DocumentVersion")
 
   @@map("documents")
 }
 
 model CaseHistory {
-  id          String   @id @default(cuid())
+  id            String  @id @default(cuid())
   previousStage String?
-  newStage    String
-  reason      String?
-  notes       String?
-  duration    Int?     // Duration in days at previous stage
+  newStage      String
+  reason        String?
+  notes         String?
+  duration      Int? // Duration in days at previous stage
 
-  createdAt   DateTime @default(now())
+  createdAt DateTime @default(now())
 
   // Relations
-  caseId      String
-  case        Case @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  caseId String
+  case   Case   @relation(fields: [caseId], references: [id], onDelete: Cascade)
 
   changedById String
-  changedBy   User @relation(fields: [changedById], references: [id])
+  changedBy   User   @relation(fields: [changedById], references: [id])
 
   @@map("case_histories")
 }
 
 model Activity {
-  id          String   @id @default(cuid())
-  action      String   // created, updated, deleted, assigned, etc.
-  entityType  String   // case, document, user, etc.
+  id          String       @id @default(cuid())
+  action      ActivityType // created, updated, deleted, assigned, etc.
+  entityType  String // case, document, user, etc.
   entityId    String
   description String?
-  metadata    Json?    // Additional data about the activity
+  metadata    Json? // Additional data about the activity
 
-  createdAt   DateTime @default(now())
+  createdAt DateTime @default(now())
 
   // Relations
-  userId      String
-  user        User @relation(fields: [userId], references: [id])
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
 
-  caseId      String?
-  case        Case? @relation(fields: [caseId], references: [id])
+  caseId String?
+  case   Case?   @relation(fields: [caseId], references: [id])
 
+  @@index([userId])
+  @@index([action])
+  @@index([entityType])
+  @@index([entityId])
+  @@index([createdAt])
+  @@index([caseId])
   @@map("activities")
 }
 
 model CaseAssignment {
   id         String   @id @default(cuid())
-  type       String   // analyst, reviewer, approver, etc.
+  type       String // analyst, reviewer, approver, etc.
   isActive   Boolean  @default(true)
   assignedAt DateTime @default(now())
 
   // Relations
-  caseId     String
-  case       Case @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  caseId String
+  case   Case   @relation(fields: [caseId], references: [id], onDelete: Cascade)
 
-  userId     String
-  user       User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([caseId, userId, type])
   @@map("case_assignments")
 }
 
 model TechnicalMeeting {
-  id          String   @id @default(cuid())
+  id          String      @id @default(cuid())
   title       String
   description String?
-  meetingType String   // site_visit, coordination, decision, etc.
+  meetingType MeetingType // site_visit, coordination, decision, etc.
   location    String?
-  virtual     Boolean  @default(false)
+  virtual     Boolean     @default(false)
   meetingUrl  String?
 
   // Dates and times
   scheduledFor DateTime
-  duration     Int      // Duration in minutes
+  duration     Int // Duration in minutes
 
   // Status
-  status      String   @default("scheduled") // scheduled, in_progress, completed, cancelled
+  status String @default("scheduled") // scheduled, in_progress, completed, cancelled
 
   // Participants
   requiredParticipants Int @default(0)
   actualParticipants   Int @default(0)
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Relations
-  caseId      String
-  case        Case @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  caseId String
+  case   Case   @relation(fields: [caseId], references: [id], onDelete: Cascade)
 
   // Meeting data (stored as JSON for flexibility)
-  agenda      Json?
-  minutes     Json?
-  decisions   Json?
+  agenda    Json?
+  minutes   Json?
+  decisions Json?
 
   @@map("technical_meetings")
 }
 
 model Notification {
-  id        String   @id @default(cuid())
-  title     String
-  message   String
-  type      String   // info, warning, error, success
-  isRead    Boolean  @default(false)
+  id      String           @id @default(cuid())
+  title   String
+  message String
+  type    NotificationType // info, warning, error, success
+  isRead  Boolean          @default(false)
 
   // Entity reference
   entityType String? // case, meeting, document, etc.
   entityId   String?
 
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
   readAt    DateTime?
 
   // Relations
-  userId    String
-  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("notifications")
 }
 
+// NextAuth.js required models
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
 model SystemConfig {
-  id        String   @id @default(cuid())
-  key       String   @unique
-  value     String
-  type      String   @default("string") // string, number, boolean, json
-  category  String
+  id          String  @id @default(cuid())
+  key         String  @unique
+  value       String
+  type        String  @default("string") // string, number, boolean, json
+  category    String
   description String?
 
   createdAt DateTime @default(now())
