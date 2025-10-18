@@ -37,22 +37,23 @@ enum Priority {
 }
 
 enum CaseStage {
-  INITIAL_REVIEW
-  LEGAL_REVIEW
-  TECHNICAL_EVALUATION
-  APPRAISAL
-  NEGOTIATION
-  DOCUMENTATION
-  PUBLIC_CONSULTATION
-  APPROVAL
-  PAYMENT
-  TRANSFER
-  FINAL_CLOSURE
-  QUALITY_CONTROL
-  AUDIT
-  REPORTING
-  ARCHIVE_PREPARATION
-  COMPLETED
+  RECEPCION_SOLICITUD
+  VERIFICACION_REQUISITOS
+  CARGA_DOCUMENTOS
+  ASIGNACION_ANALISTA
+  ANALISIS_PRELIMINAR
+  NOTIFICACION_PROPIETARIO
+  PERITAJE_TECNICO
+  DETERMINACION_VALOR
+  OFERTA_COMPRA
+  NEGOCIACION
+  APROBACION_ACUERDO
+  ELABORACION_ESCRITURA
+  FIRMA_DOCUMENTOS
+  REGISTRO_PROPIEDAD
+  DESEMBOLSO_PAGO
+  ENTREGA_INMUEBLE
+  CIERRE_ARCHIVO
   SUSPENDED
   CANCELLED
 }
@@ -309,6 +310,7 @@ model User {
   departmentAssignments UserDepartmentAssignment[]
   headOfDepartments Department[] @relation("DepartmentHead")
   departmentTransfers DepartmentTransfer[]
+  receivedStageNotifications StageNotification[]
 
   // NextAuth.js relations
   accounts      Account[]
@@ -390,7 +392,7 @@ model Case {
   fileNumber   String     @unique // Enhanced from caseNumber to fileNumber
   title        String
   description  String?
-  currentStage CaseStage  @default(INITIAL_REVIEW)
+  currentStage CaseStage  @default(RECEPCION_SOLICITUD)
   priority     Priority   @default(MEDIUM)
   status       CaseStatus @default(PENDIENTE)
 
@@ -458,6 +460,11 @@ model Case {
   activities  Activity[]
   meetings    TechnicalMeeting[]
   assignments CaseAssignment[]
+
+  // Workflow relations
+  stageAssignments CaseStageAssignment[]
+  stageProgressions StageProgression[]
+  stageNotifications StageNotification[]
 
   @@index([fileNumber])
   @@index([currentStage])
@@ -756,4 +763,183 @@ model DepartmentTransfer {
   @@index([status])
   @@index([effectiveDate])
   @@map("department_transfers")
+}
+
+// Enhanced Workflow Models for 17-Stage System
+
+// Stage Configuration Model
+model Stage {
+  id                String    @id @default(cuid())
+  stage             CaseStage @unique
+  name              String
+  description       String
+  sequenceOrder     Int       // Sequential order (1-17)
+  responsibleDepartment String  // Department code responsible for this stage
+  estimatedDuration Int?      // Estimated duration in days
+  isActive          Boolean   @default(true)
+
+  // Stage configuration
+  requiredDocuments   Json?    // Array of required document types
+  validationRules     Json?    // Validation rules for this stage
+  autoAssignmentRules Json?    // Rules for automatic assignment
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  stageChecklists     StageChecklist[]
+  caseStageAssignments CaseStageAssignment[]
+  fromProgressions    StageProgression[] @relation("StageFrom")
+  toProgressions      StageProgression[] @relation("StageTo")
+
+  @@index([sequenceOrder])
+  @@index([responsibleDepartment])
+  @@index([isActive])
+  @@map("stages")
+}
+
+// Case Stage Assignment Model (tracks current stage for each case)
+model CaseStageAssignment {
+  id         String   @id @default(cuid())
+  caseId     String
+  stage      CaseStage
+  assignedAt DateTime @default(now())
+  assignedBy String?  // User who assigned this stage
+  dueDate    DateTime? // Estimated completion date
+  isActive   Boolean  @default(true)
+  notes      String?
+
+  // Relations
+  case   Case   @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  stageConfig Stage @relation(fields: [stage], references: [stage])
+
+  // Checklist completions for this stage assignment
+  checklistCompletions ChecklistCompletion[]
+
+  @@unique([caseId, stage])
+  @@index([caseId])
+  @@index([stage])
+  @@index([assignedBy])
+  @@index([dueDate])
+  @@index([isActive])
+  @@map("case_stage_assignments")
+}
+
+// Stage Progression History Model
+model StageProgression {
+  id             String   @id @default(cuid())
+  caseId         String
+  fromStage      CaseStage?
+  toStage        CaseStage
+  progressionType String   // FORWARD, BACKWARD, JUMP
+  reason         String?  // Reason for progression or return
+  observations   String?  // Detailed observations for returns
+  approvedBy     String?  // User who approved the progression
+  approvedAt     DateTime?
+  duration       Int?     // Duration in days at previous stage
+  ipAddress      String?
+  userAgent      String?
+
+  createdAt DateTime @default(now())
+
+  // Relations
+  case Case @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  fromStageConfig Stage? @relation("StageFrom", fields: [fromStage], references: [stage])
+  toStageConfig   Stage   @relation("StageTo", fields: [toStage], references: [stage])
+
+  @@index([caseId])
+  @@index([fromStage])
+  @@index([toStage])
+  @@index([progressionType])
+  @@index([approvedBy])
+  @@index([createdAt])
+  @@map("stage_progressions")
+}
+
+// Stage Checklist Model
+model StageChecklist {
+  id          String @id @default(cuid())
+  stage       CaseStage
+  title       String
+  description String?
+  isRequired  Boolean @default(true)
+  itemType    String  // DOCUMENT, ACTION, VERIFICATION, APPROVAL
+  sequence    Int?    // Order within stage
+  isActive    Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  stageConfig Stage @relation(fields: [stage], references: [stage])
+  completions ChecklistCompletion[]
+
+  @@unique([stage, sequence])
+  @@index([stage])
+  @@index([isRequired])
+  @@index([isActive])
+  @@map("stage_checklists")
+}
+
+// Checklist Completion Model
+model ChecklistCompletion {
+  id             String   @id @default(cuid())
+  caseStageId    String   // Links to CaseStageAssignment
+  checklistId    String
+  isCompleted    Boolean  @default(false)
+  completedAt    DateTime?
+  completedBy    String?  // User who completed the item
+  notes          String?  // Notes about completion
+  attachmentPath String?  // Path to attached document if applicable
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  caseStageAssignment CaseStageAssignment @relation(fields: [caseStageId], references: [id], onDelete: Cascade)
+  checklist StageChecklist @relation(fields: [checklistId], references: [id])
+
+  @@unique([caseStageId, checklistId])
+  @@index([caseStageId])
+  @@index([checklistId])
+  @@index([isCompleted])
+  @@index([completedBy])
+  @@map("checklist_completions")
+}
+
+// Stage Notification Model
+model StageNotification {
+  id          String          @id @default(cuid())
+  caseId      String
+  stage       CaseStage
+  type        NotificationType
+  title       String
+  message     String
+  recipientId String          // User ID of recipient
+  isRead      Boolean         @default(false)
+  readAt      DateTime?
+
+  // Notification configuration
+  sendEmail   Boolean @default(false)
+  emailSent   Boolean @default(false)
+  priority    String  @default("medium") // low, medium, high, urgent
+
+  // Metadata
+  metadata    Json?   // Additional notification data
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  case   Case   @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  recipient User? @relation(fields: [recipientId], references: [id])
+
+  @@index([caseId])
+  @@index([stage])
+  @@index([recipientId])
+  @@index([type])
+  @@index([isRead])
+  @@index([priority])
+  @@index([createdAt])
+  @@map("stage_notifications")
 }
