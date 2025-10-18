@@ -380,7 +380,7 @@ export const DepartmentTree: React.FC<DepartmentTreeProps> = ({
             while (current.parentId) {
               nodesToExpand.add(current.parentId);
               const parent = departments.find(d => d.id === current.parentId);
-              if (!parent) break;
+              if (!parent) {break;}
               current = { ...parent } as Department;
             }
           }

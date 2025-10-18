@@ -140,7 +140,7 @@ export default function DepartmentsManagementPage() {
 
   const fetchDepartments = async () => {
     const response = await fetch('/api/departments?includeHierarchy=true');
-    if (!response.ok) throw new Error('Error fetching departments');
+    if (!response.ok) {throw new Error('Error fetching departments');}
 
     const data = await response.json();
     setDepartments(data);
@@ -148,7 +148,7 @@ export default function DepartmentsManagementPage() {
 
   const fetchUsers = async () => {
     const response = await fetch('/api/users?limit=1000'); // Get all users for department assignment
-    if (!response.ok) throw new Error('Error fetching users');
+    if (!response.ok) {throw new Error('Error fetching users');}
 
     const data = await response.json();
     setUsers(data.users || []);
@@ -179,7 +179,7 @@ export default function DepartmentsManagementPage() {
   };
 
   const handleUpdateDepartment = async (departmentData: any) => {
-    if (!selectedDepartment) return;
+    if (!selectedDepartment) {return;}
 
     try {
       const response = await fetch(`/api/departments/${selectedDepartment.id}`, {
@@ -205,7 +205,7 @@ export default function DepartmentsManagementPage() {
   };
 
   const handleDeleteDepartment = async () => {
-    if (!selectedDepartment) return;
+    if (!selectedDepartment) {return;}
 
     try {
       const response = await fetch(`/api/departments/${selectedDepartment.id}`, {

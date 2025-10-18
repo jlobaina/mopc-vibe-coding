@@ -32,17 +32,72 @@ export interface Role {
 
 export interface Case {
   id: string;
-  caseNumber: string;
+  fileNumber: string;
   title: string;
   description?: string;
-  status: string;
+  currentStage: string;
   priority: string;
+  status: string;
+  startDate: Date;
+  expectedEndDate?: Date;
+  actualEndDate?: Date;
+  propertyAddress: string;
+  propertyCity: string;
+  propertyProvince: string;
+  propertyDescription?: string;
+  propertyCoordinates?: string;
+  propertyArea?: number;
+  propertyType?: string;
+  ownerName: string;
+  ownerIdentification?: string;
+  ownerContact?: string;
+  ownerEmail?: string;
+  ownerAddress?: string;
+  ownerType?: string;
+  estimatedValue?: number;
+  actualValue?: number;
+  appraisalValue?: number;
+  compensationAmount?: number;
+  currency: string;
+  expropriationDecree?: string;
+  judicialCaseNumber?: string;
+  legalStatus?: string;
+  progressPercentage: number;
   departmentId: string;
   createdById: string;
   assignedToId?: string;
   supervisedById?: string;
   createdAt: Date;
   updatedAt: Date;
+  department?: {
+    id: string;
+    name: string;
+    code: string;
+  };
+  createdBy?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+  };
+  assignedTo?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+  };
+  supervisedBy?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+  };
+  _count?: {
+    documents: number;
+    histories: number;
+    activities: number;
+    meetings: number;
+  };
 }
 
 export interface Document {
@@ -97,4 +152,26 @@ export interface DepartmentWithUsers extends Department {
 
 export interface ActivityWithUser extends Activity {
   user: User;
+}
+
+// Search and filter types
+export interface CaseSearchInput {
+  query?: string;
+  status?: string;
+  priority?: string;
+  currentStage?: string;
+  departmentId?: string;
+  assignedToId?: string;
+  createdBy?: string;
+  startDateFrom?: Date;
+  startDateTo?: Date;
+  expectedEndDateFrom?: Date;
+  expectedEndDateTo?: Date;
+  ownerName?: string;
+  propertyAddress?: string;
+  fileNumber?: string;
+  page: number;
+  limit: number;
+  sortBy: string;
+  sortOrder: string;
 }

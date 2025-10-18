@@ -134,7 +134,7 @@ export function DataTable<T extends Record<string, any>>({
   // Handle sorting
   const handleSort = (columnId: string) => {
     const column = columns.find(col => col.id === columnId);
-    if (!column?.sortable) return;
+    if (!column?.sortable) {return;}
 
     const newDirection = sortColumn === columnId && sortDirection === 'asc' ? 'desc' : 'asc';
     setSortColumn(columnId);
@@ -145,7 +145,7 @@ export function DataTable<T extends Record<string, any>>({
   // Handle filtering
   const handleFilter = (columnId: string, value: any) => {
     const newFilters = { ...filters, [columnId]: value };
-    if (!value || value === 'ALL') delete newFilters[columnId];
+    if (!value || value === 'ALL') {delete newFilters[columnId];}
     setFilters(newFilters);
     onFilter?.(newFilters);
   };
@@ -204,8 +204,8 @@ export function DataTable<T extends Record<string, any>>({
         const aValue = a[sortColumn];
         const bValue = b[sortColumn];
 
-        if (aValue === null || aValue === undefined) return 1;
-        if (bValue === null || bValue === undefined) return -1;
+        if (aValue === null || aValue === undefined) {return 1;}
+        if (bValue === null || bValue === undefined) {return -1;}
 
         let comparison = 0;
         if (typeof aValue === 'string' && typeof bValue === 'string') {

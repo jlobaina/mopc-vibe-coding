@@ -223,7 +223,7 @@ export function hasRole(userRole: string, allowedRoles: string[]): boolean {
  * Get session error message from URL parameters
  */
 export function getAuthErrorMessage(error?: string): string | null {
-  if (!error) return null;
+  if (!error) {return null;}
 
   const errorMessages: Record<string, string> = {
     CredentialsSignin: 'Credenciales inválidas',

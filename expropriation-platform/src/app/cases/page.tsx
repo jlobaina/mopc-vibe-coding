@@ -1,0 +1,397 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { useSession } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
+import { Plus, Search, Filter, Download, RefreshCw } from 'lucide-react'
+
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Badge } from '@/components/ui/badge'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Skeleton } from '@/components/ui/skeleton'
+import { toast } from 'react-hot-toast'
+
+import { Case, CaseSearchInput } from '@/types/client'
+
+const CASE_STATUSES = [
+  { value: 'PENDIENTE', label: 'Pendiente', color: 'bg-yellow-100 text-yellow-800' },
+  { value: 'EN_PROGRESO', label: 'En Progreso', color: 'bg-blue-100 text-blue-800' },
+  { value: 'COMPLETADO', label: 'Completado', color: 'bg-green-100 text-green-800' },
+  { value: 'SUSPENDED', label: 'Suspendido', color: 'bg-orange-100 text-orange-800' },
+  { value: 'CANCELLED', label: 'Cancelado', color: 'bg-red-100 text-red-800' },
+  { value: 'ARCHIVED', label: 'Archivado', color: 'bg-gray-100 text-gray-800' }
+]
+
+const PRIORITIES = [
+  { value: 'LOW', label: 'Baja', color: 'bg-gray-100 text-gray-800' },
+  { value: 'MEDIUM', label: 'Media', color: 'bg-blue-100 text-blue-800' },
+  { value: 'HIGH', label: 'Alta', color: 'bg-orange-100 text-orange-800' },
+  { value: 'URGENT', label: 'Urgente', color: 'bg-red-100 text-red-800' }
+]
+
+export default function CasesPage() {
+  const { data: session, status } = useSession()
+  const router = useRouter()
+  const [cases, setCases] = useState<Case[]>([])
+  const [loading, setLoading] = useState(true)
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 20,
+    total: 0,
+    pages: 0
+  })
+  const [searchParams, setSearchParams] = useState<CaseSearchInput>({
+    page: 1,
+    limit: 20,
+    sortBy: 'createdAt',
+    sortOrder: 'desc'
+  })
+  const [debouncedQuery, setDebouncedQuery] = useState('')
+
+  // Debounce search query
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedQuery(searchParams.query || '')
+    }, 300)
+
+    return () => clearTimeout(timer)
+  }, [searchParams.query])
+
+  // Fetch cases
+  const fetchCases = async () => {
+    try {
+      setLoading(true)
+      const params = new URLSearchParams({
+        ...searchParams,
+        query: debouncedQuery,
+        page: searchParams.page.toString(),
+        limit: searchParams.limit.toString()
+      })
+
+      const response = await fetch(`/api/cases?${params}`)
+      if (!response.ok) {
+        throw new Error('Failed to fetch cases')
+      }
+
+      const data = await response.json()
+      setCases(data.cases)
+      setPagination(data.pagination)
+    } catch (error) {
+      console.error('Error fetching cases:', error)
+      toast.error('Error al cargar los casos')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Fetch cases when search params change
+  useEffect(() => {
+    if (status === 'authenticated') {
+      fetchCases()
+    }
+  }, [status, debouncedQuery, searchParams.page, searchParams.limit, searchParams.status, searchParams.priority, searchParams.currentStage, searchParams.departmentId, searchParams.assignedToId, searchParams.sortBy, searchParams.sortOrder])
+
+  // Handle search input change
+  const handleSearchChange = (value: string) => {
+    setSearchParams(prev => ({ ...prev, query: value, page: 1 }))
+  }
+
+  // Handle filter change
+  const handleFilterChange = (key: keyof CaseSearchInput, value: any) => {
+    setSearchParams(prev => ({ ...prev, [key]: value, page: 1 }))
+  }
+
+  // Handle pagination
+  const handlePageChange = (page: number) => {
+    setSearchParams(prev => ({ ...prev, page }))
+  }
+
+  // Get status badge color
+  const getStatusBadge = (status: string) => {
+    const statusConfig = CASE_STATUSES.find(s => s.value === status)
+    return statusConfig || { label: status, color: 'bg-gray-100 text-gray-800' }
+  }
+
+  // Get priority badge color
+  const getPriorityBadge = (priority: string) => {
+    const priorityConfig = PRIORITIES.find(p => p.value === priority)
+    return priorityConfig || { label: priority, color: 'bg-gray-100 text-gray-800' }
+  }
+
+  // Format date
+  const formatDate = (date: string) => {
+    return new Date(date).toLocaleDateString('es-DO', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    })
+  }
+
+  if (status === 'loading') {
+    return (
+      <div className="container mx-auto py-8">
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <Skeleton className="h-8 w-64 mb-2" />
+            <Skeleton className="h-4 w-96" />
+          </div>
+          <Skeleton className="h-10 w-32" />
+        </div>
+        <div className="grid gap-4">
+          {[...Array(10)].map((_, i) => (
+            <Skeleton key={i} className="h-16 w-full" />
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  if (status === 'unauthenticated') {
+    router.push('/login')
+    return null
+  }
+
+  return (
+    <div className="container mx-auto py-8">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Gestión de Casos</h1>
+          <p className="text-muted-foreground">
+            Administra y supervisa todos los casos de expropiación
+          </p>
+        </div>
+        <Button onClick={() => router.push('/cases/create')}>
+          <Plus className="mr-2 h-4 w-4" />
+          Nuevo Caso
+        </Button>
+      </div>
+
+      {/* Search and Filters */}
+      <Card className="mb-6">
+        <CardContent className="p-6">
+          <div className="flex flex-col sm:flex-row gap-4">
+            {/* Search */}
+            <div className="flex-1">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                <Input
+                  placeholder="Buscar por número, título, propietario o dirección..."
+                  value={searchParams.query || ''}
+                  onChange={(e) => handleSearchChange(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+            </div>
+
+            {/* Filters */}
+            <div className="flex gap-2">
+              <Select
+                value={searchParams.status || 'ALL'}
+                onValueChange={(value) => handleFilterChange('status', value === 'ALL' ? undefined : value)}
+              >
+                <SelectTrigger className="w-40">
+                  <SelectValue placeholder="Estado" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">Todos los estados</SelectItem>
+                  {CASE_STATUSES.map(status => (
+                    <SelectItem key={status.value} value={status.value}>
+                      {status.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select
+                value={searchParams.priority || 'ALL'}
+                onValueChange={(value) => handleFilterChange('priority', value === 'ALL' ? undefined : value)}
+              >
+                <SelectTrigger className="w-32">
+                  <SelectValue placeholder="Prioridad" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">Todas</SelectItem>
+                  {PRIORITIES.map(priority => (
+                    <SelectItem key={priority.value} value={priority.value}>
+                      {priority.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Button
+                variant="outline"
+                onClick={fetchCases}
+                disabled={loading}
+              >
+                <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Cases Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle>
+            Casos ({pagination.total})
+          </CardTitle>
+          <CardDescription>
+            Lista de casos de expropiación con filtros aplicados
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="space-y-4">
+              {[...Array(5)].map((_, i) => (
+                <Skeleton key={i} className="h-16 w-full" />
+              ))}
+            </div>
+          ) : cases.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-muted-foreground mb-4">
+                No se encontraron casos con los filtros actuales
+              </p>
+              <Button onClick={() => router.push('/cases/create')}>
+                <Plus className="mr-2 h-4 w-4" />
+                Crear Primer Caso
+              </Button>
+            </div>
+          ) : (
+            <>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Número</TableHead>
+                    <TableHead>Título</TableHead>
+                    <TableHead>Propietario</TableHead>
+                    <TableHead>Departamento</TableHead>
+                    <TableHead>Asignado a</TableHead>
+                    <TableHead>Estado</TableHead>
+                    <TableHead>Prioridad</TableHead>
+                    <TableHead>Progreso</TableHead>
+                    <TableHead>Creación</TableHead>
+                    <TableHead>Acciones</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {cases.map((case_) => (
+                    <TableRow
+                      key={case_.id}
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => router.push(`/cases/${case_.id}`)}
+                    >
+                      <TableCell className="font-medium">
+                        {case_.fileNumber}
+                      </TableCell>
+                      <TableCell>
+                        <div>
+                          <div className="font-medium">{case_.title}</div>
+                          {case_.description && (
+                            <div className="text-sm text-muted-foreground truncate max-w-xs">
+                              {case_.description}
+                            </div>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>{case_.ownerName}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline">
+                          {case_.department?.code}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {case_.assignedTo ? (
+                          <div>
+                            <div className="text-sm">
+                              {case_.assignedTo.firstName} {case_.assignedTo.lastName}
+                            </div>
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground text-sm">Sin asignar</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={getStatusBadge(case_.status).color}>
+                          {getStatusBadge(case_.status).label}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={getPriorityBadge(case_.priority).color}>
+                          {getPriorityBadge(case_.priority).label}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <div className="w-full bg-secondary rounded-full h-2">
+                            <div
+                              className="bg-primary h-2 rounded-full transition-all"
+                              style={{ width: `${case_.progressPercentage}%` }}
+                            />
+                          </div>
+                          <span className="text-xs text-muted-foreground">
+                            {case_.progressPercentage}%
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-sm">
+                        {formatDate(case_.createdAt)}
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            router.push(`/cases/${case_.id}`)
+                          }}
+                        >
+                          Ver
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+
+              {/* Pagination */}
+              {pagination.pages > 1 && (
+                <div className="flex items-center justify-between mt-6">
+                  <div className="text-sm text-muted-foreground">
+                    Mostrando {(pagination.page - 1) * pagination.limit + 1} a{' '}
+                    {Math.min(pagination.page * pagination.limit, pagination.total)} de{' '}
+                    {pagination.total} casos
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePageChange(pagination.page - 1)}
+                      disabled={pagination.page === 1}
+                    >
+                      Anterior
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePageChange(pagination.page + 1)}
+                      disabled={pagination.page === pagination.pages}
+                    >
+                      Siguiente
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  )
+}

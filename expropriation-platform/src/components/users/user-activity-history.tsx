@@ -106,7 +106,7 @@ export function UserActivityHistory({ userId, userName }: UserActivityHistoryPro
       });
 
       const response = await fetch(`/api/users/${userId}/activity?${params}`);
-      if (!response.ok) throw new Error('Error fetching activity history');
+      if (!response.ok) {throw new Error('Error fetching activity history');}
 
       const data = await response.json();
       setActivities(data.activities);
@@ -203,7 +203,7 @@ export function UserActivityHistory({ userId, userName }: UserActivityHistoryPro
       });
 
       const response = await fetch(`/api/users/${userId}/activity/export?${params}`);
-      if (!response.ok) throw new Error('Error exporting activity');
+      if (!response.ok) {throw new Error('Error exporting activity');}
 
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);

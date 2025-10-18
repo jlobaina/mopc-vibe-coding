@@ -183,7 +183,7 @@ export function RolePermissionMatrix({ roles, onRolesUpdate }: RolePermissionMat
   // Handle category toggle (select all/deselect all)
   const handleCategoryToggle = (categoryId: string, checked: boolean) => {
     const category = PERMISSION_CATEGORIES.find(cat => cat.id === categoryId);
-    if (!category) return;
+    if (!category) {return;}
 
     const updatedPermissions = { ...rolePermissions };
     category.permissions.forEach(permission => {
@@ -265,7 +265,7 @@ export function RolePermissionMatrix({ roles, onRolesUpdate }: RolePermissionMat
 
   // Delete role
   const handleDeleteRole = async () => {
-    if (!selectedRole) return;
+    if (!selectedRole) {return;}
 
     setLoading(true);
     try {

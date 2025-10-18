@@ -99,7 +99,7 @@ export function DepartmentPermissions({
     try {
       setLoading(true);
       const response = await fetch(`/api/departments/${departmentId}/permissions`);
-      if (!response.ok) throw new Error('Error fetching permissions');
+      if (!response.ok) {throw new Error('Error fetching permissions');}
 
       const data = await response.json();
       setPermissions(data.allPermissions || []);

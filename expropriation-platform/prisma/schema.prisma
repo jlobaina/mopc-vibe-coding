@@ -21,8 +21,9 @@ enum UserRole {
 }
 
 enum CaseStatus {
-  ACTIVE
-  COMPLETED
+  PENDIENTE
+  EN_PROGRESO
+  COMPLETADO
   ARCHIVED
   SUSPENDED
   CANCELLED
@@ -74,6 +75,17 @@ enum ActivityType {
   IMPORTED
   LOGIN
   LOGOUT
+  // Case specific activities
+  STATUS_CHANGED
+  STAGE_CHANGED
+  PROPERTY_UPDATED
+  OWNER_UPDATED
+  FINANCIAL_UPDATED
+  LEGAL_UPDATED
+  NOTE_ADDED
+  DOCUMENT_ADDED
+  ASSIGNMENT_CHANGED
+  PRIORITY_CHANGED
 }
 
 enum MeetingType {
@@ -375,30 +387,53 @@ model UserDepartmentAssignment {
 
 model Case {
   id           String     @id @default(cuid())
-  caseNumber   String     @unique
+  fileNumber   String     @unique // Enhanced from caseNumber to fileNumber
   title        String
   description  String?
   currentStage CaseStage  @default(INITIAL_REVIEW)
   priority     Priority   @default(MEDIUM)
-  status       CaseStatus @default(ACTIVE)
+  status       CaseStatus @default(PENDIENTE)
 
   // Dates
   startDate       DateTime  @default(now())
   expectedEndDate DateTime?
   actualEndDate   DateTime?
 
-  // Location
-  locationAddress  String
-  locationCity     String
-  locationProvince String
-  coordinates      String? // GPS coordinates
+  // Property Information
+  propertyAddress    String
+  propertyCity       String
+  propertyProvince   String
+  propertyDescription String?
+  propertyCoordinates String? // GPS coordinates
+  propertyArea       Float?   // Area in square meters
+  propertyType       String?  // Type of property (residential, commercial, etc.)
 
-  // Financial
-  estimatedValue Float?
-  actualValue    Float?
+  // Owner Information
+  ownerName          String
+  ownerIdentification String? // ID number or tax ID
+  ownerContact       String?  // Phone number
+  ownerEmail         String?
+  ownerAddress       String?
+  ownerType          String?  // Individual, company, government, etc.
+
+  // Financial Information
+  estimatedValue     Float?
+  actualValue        Float?
+  appraisalValue     Float?
+  compensationAmount Float?
+  currency           String   @default("DOP") // Dominican Peso
+
+  // Legal Information
+  expropriationDecree String? // Legal decree number
+  judicialCaseNumber  String? // Court case number if applicable
+  legalStatus         String? // Current legal status
 
   // Progress tracking
   progressPercentage Float @default(0)
+
+  // Soft delete
+  deletedAt DateTime?
+  deletedBy String?
 
   // Metadata
   createdAt DateTime @default(now())
@@ -424,7 +459,7 @@ model Case {
   meetings    TechnicalMeeting[]
   assignments CaseAssignment[]
 
-  @@index([caseNumber])
+  @@index([fileNumber])
   @@index([currentStage])
   @@index([priority])
   @@index([status])
@@ -435,6 +470,9 @@ model Case {
   @@index([createdAt])
   @@index([startDate])
   @@index([expectedEndDate])
+  @@index([deletedAt])
+  @@index([ownerName])
+  @@index([propertyAddress])
   @@map("cases")
 }
 
@@ -469,12 +507,16 @@ model Document {
 }
 
 model CaseHistory {
-  id            String  @id @default(cuid())
-  previousStage String?
-  newStage      String
-  reason        String?
-  notes         String?
-  duration      Int? // Duration in days at previous stage
+  id            String     @id @default(cuid())
+  action        String     // Type of change: status_change, stage_change, assignment_change, field_update, etc.
+  field         String?    // Which field was changed
+  previousValue String?    // JSON string with previous value
+  newValue      String?    // JSON string with new value
+  reason        String?    // Reason for the change
+  notes         String?    // Additional notes
+  duration      Int?       // Duration in days at previous stage (for stage changes)
+  ipAddress     String?    // IP address of the user making the change
+  userAgent     String?    // User agent of the browser
 
   createdAt DateTime @default(now())
 
@@ -485,6 +527,10 @@ model CaseHistory {
   changedById String
   changedBy   User   @relation(fields: [changedById], references: [id])
 
+  @@index([caseId])
+  @@index([changedById])
+  @@index([action])
+  @@index([createdAt])
   @@map("case_histories")
 }
 

@@ -187,7 +187,7 @@ export default function UsersManagementPage() {
     });
 
     const response = await fetch(`/api/users?${params}`);
-    if (!response.ok) throw new Error('Error fetching users');
+    if (!response.ok) {throw new Error('Error fetching users');}
 
     const data: PaginatedUsersResponse = await response.json();
     setUsers(data.users);
@@ -196,7 +196,7 @@ export default function UsersManagementPage() {
 
   const fetchDepartments = async () => {
     const response = await fetch('/api/departments');
-    if (!response.ok) throw new Error('Error fetching departments');
+    if (!response.ok) {throw new Error('Error fetching departments');}
 
     const data = await response.json();
     setDepartments(data);
@@ -204,7 +204,7 @@ export default function UsersManagementPage() {
 
   const fetchRoles = async () => {
     const response = await fetch('/api/roles?includeUserCount=true');
-    if (!response.ok) throw new Error('Error fetching roles');
+    if (!response.ok) {throw new Error('Error fetching roles');}
 
     const data = await response.json();
     setRoles(data);
@@ -234,7 +234,7 @@ export default function UsersManagementPage() {
   };
 
   const handleUpdateUser = async (userData: any) => {
-    if (!selectedUser) return;
+    if (!selectedUser) {return;}
 
     try {
       const response = await fetch(`/api/users/${selectedUser.id}`, {
@@ -260,7 +260,7 @@ export default function UsersManagementPage() {
   };
 
   const handleDeleteUser = async () => {
-    if (!selectedUser) return;
+    if (!selectedUser) {return;}
 
     try {
       const response = await fetch(`/api/users/${selectedUser.id}`, {
@@ -322,7 +322,7 @@ export default function UsersManagementPage() {
       });
 
       const response = await fetch(`/api/users/export?${params}`);
-      if (!response.ok) throw new Error('Error al exportar usuarios');
+      if (!response.ok) {throw new Error('Error al exportar usuarios');}
 
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);

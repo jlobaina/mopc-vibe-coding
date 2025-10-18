@@ -76,7 +76,7 @@ export function UserSessions({ userId, userName }: UserSessionsProps) {
       });
 
       const response = await fetch(`/api/users/${userId}/sessions?${params}`);
-      if (!response.ok) throw new Error('Error fetching sessions');
+      if (!response.ok) {throw new Error('Error fetching sessions');}
 
       const data = await response.json();
       setSessions(data);
@@ -89,7 +89,7 @@ export function UserSessions({ userId, userName }: UserSessionsProps) {
   };
 
   const getDeviceIcon = (userAgent?: string) => {
-    if (!userAgent) return <Monitor className="h-4 w-4" />;
+    if (!userAgent) {return <Monitor className="h-4 w-4" />;}
 
     const ua = userAgent.toLowerCase();
     if (ua.includes('mobile') || ua.includes('android') || ua.includes('iphone')) {
@@ -112,16 +112,16 @@ export function UserSessions({ userId, userName }: UserSessionsProps) {
     let os = 'Desconocido';
 
     // Simple user agent parsing
-    if (userAgent.includes('Chrome')) browser = 'Chrome';
-    else if (userAgent.includes('Firefox')) browser = 'Firefox';
-    else if (userAgent.includes('Safari')) browser = 'Safari';
-    else if (userAgent.includes('Edge')) browser = 'Edge';
+    if (userAgent.includes('Chrome')) {browser = 'Chrome';}
+    else if (userAgent.includes('Firefox')) {browser = 'Firefox';}
+    else if (userAgent.includes('Safari')) {browser = 'Safari';}
+    else if (userAgent.includes('Edge')) {browser = 'Edge';}
 
-    if (userAgent.includes('Windows')) os = 'Windows';
-    else if (userAgent.includes('Mac')) os = 'macOS';
-    else if (userAgent.includes('Linux')) os = 'Linux';
-    else if (userAgent.includes('Android')) os = 'Android';
-    else if (userAgent.includes('iOS') || userAgent.includes('iPhone') || userAgent.includes('iPad')) os = 'iOS';
+    if (userAgent.includes('Windows')) {os = 'Windows';}
+    else if (userAgent.includes('Mac')) {os = 'macOS';}
+    else if (userAgent.includes('Linux')) {os = 'Linux';}
+    else if (userAgent.includes('Android')) {os = 'Android';}
+    else if (userAgent.includes('iOS') || userAgent.includes('iPhone') || userAgent.includes('iPad')) {os = 'iOS';}
 
     return { browser, os };
   };

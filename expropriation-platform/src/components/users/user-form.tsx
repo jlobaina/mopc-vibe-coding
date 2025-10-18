@@ -164,13 +164,13 @@ export function UserForm({
     }
 
     let strength = 0;
-    if (watchPassword.length >= 8) strength++;
-    if (watchPassword.length >= 12) strength++;
-    if (/[a-z]/.test(watchPassword)) strength++;
-    if (/[A-Z]/.test(watchPassword)) strength++;
-    if (/\d/.test(watchPassword)) strength++;
-    if (/[@$!%*?&]/.test(watchPassword)) strength++;
-    if (watchPassword.length >= 16) strength++;
+    if (watchPassword.length >= 8) {strength++;}
+    if (watchPassword.length >= 12) {strength++;}
+    if (/[a-z]/.test(watchPassword)) {strength++;}
+    if (/[A-Z]/.test(watchPassword)) {strength++;}
+    if (/\d/.test(watchPassword)) {strength++;}
+    if (/[@$!%*?&]/.test(watchPassword)) {strength++;}
+    if (watchPassword.length >= 16) {strength++;}
 
     setPasswordStrength(Math.min(strength, 5));
   }, [watchPassword]);
@@ -234,14 +234,14 @@ export function UserForm({
   };
 
   const getPasswordStrengthColor = () => {
-    if (passwordStrength <= 2) return 'text-red-500';
-    if (passwordStrength <= 4) return 'text-yellow-500';
+    if (passwordStrength <= 2) {return 'text-red-500';}
+    if (passwordStrength <= 4) {return 'text-yellow-500';}
     return 'text-green-500';
   };
 
   const getPasswordStrengthText = () => {
-    if (passwordStrength <= 2) return 'Débil';
-    if (passwordStrength <= 4) return 'Media';
+    if (passwordStrength <= 2) {return 'Débil';}
+    if (passwordStrength <= 4) {return 'Media';}
     return 'Fuerte';
   };
 

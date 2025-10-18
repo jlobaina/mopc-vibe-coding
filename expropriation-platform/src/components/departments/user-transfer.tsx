@@ -203,7 +203,7 @@ export function UserTransfer({
 
   // Execute transfer
   const executeTransfer = async () => {
-    if (!transferPreview) return;
+    if (!transferPreview) {return;}
 
     setIsSubmitting(true);
     try {

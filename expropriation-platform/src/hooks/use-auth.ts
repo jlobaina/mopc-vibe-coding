@@ -22,7 +22,7 @@ export function useAuth(options: UseAuthOptions = {}) {
 
   // User data
   const user = useMemo(() => {
-    if (!session?.user) return null;
+    if (!session?.user) {return null;}
     return session.user;
   }, [session]);
 
@@ -33,7 +33,7 @@ export function useAuth(options: UseAuthOptions = {}) {
 
   const hasUserPermission = useCallback(
     (permission: string) => {
-      if (!user || !permissions) return false;
+      if (!user || !permissions) {return false;}
       return hasPermission(permissions, permission);
     },
     [user, permissions]
@@ -41,7 +41,7 @@ export function useAuth(options: UseAuthOptions = {}) {
 
   const hasUserRole = useCallback(
     (roles: string | string[]) => {
-      if (!user) return false;
+      if (!user) {return false;}
       const allowedRoles = Array.isArray(roles) ? roles : [roles];
       return hasRole(user.role, allowedRoles);
     },

@@ -80,7 +80,7 @@ export function DepartmentStatus({
     try {
       setLoading(true);
       const response = await fetch(`/api/departments/${departmentId}/status`);
-      if (!response.ok) throw new Error('Error fetching status history');
+      if (!response.ok) {throw new Error('Error fetching status history');}
 
       const data = await response.json();
       setStatusHistory(data.statusHistory || []);

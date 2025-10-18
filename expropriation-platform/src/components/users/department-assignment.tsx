@@ -103,7 +103,7 @@ export function DepartmentAssignment({
   const fetchDepartments = async () => {
     try {
       const response = await fetch('/api/departments?includeHierarchy=true');
-      if (!response.ok) throw new Error('Error fetching departments');
+      if (!response.ok) {throw new Error('Error fetching departments');}
 
       const data = await response.json();
       setDepartments(data);
@@ -117,7 +117,7 @@ export function DepartmentAssignment({
     setLoading(true);
     try {
       const response = await fetch(`/api/users/${userId}/departments`);
-      if (!response.ok) throw new Error('Error fetching assignments');
+      if (!response.ok) {throw new Error('Error fetching assignments');}
 
       const data = await response.json();
       setAssignments(data);
@@ -234,7 +234,7 @@ export function DepartmentAssignment({
   };
 
   const handleChangePrimaryDepartment = async () => {
-    if (!selectedAssignment) return;
+    if (!selectedAssignment) {return;}
 
     setUpdating(true);
     try {

@@ -182,7 +182,7 @@ export function DepartmentStages({
     try {
       setLoading(true);
       const response = await fetch(`/api/departments/${departmentId}/stages`);
-      if (!response.ok) throw new Error('Error fetching stages');
+      if (!response.ok) {throw new Error('Error fetching stages');}
 
       const data = await response.json();
       setAssignments(data.assignments || []);

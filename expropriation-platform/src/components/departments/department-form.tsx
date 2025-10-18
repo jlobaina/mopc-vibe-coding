@@ -194,7 +194,7 @@ export function DepartmentForm({
   }
 
   const getSelectedHeadUserName = () => {
-    if (!selectedHeadUser) return 'Ninguno';
+    if (!selectedHeadUser) {return 'Ninguno';}
     const user = eligibleHeadUsers.find(u => u.id === selectedHeadUser);
     return user ? `${user.firstName} ${user.lastName}` : 'Ninguno';
   };

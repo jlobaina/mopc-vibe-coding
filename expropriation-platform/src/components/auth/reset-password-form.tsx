@@ -80,7 +80,7 @@ export function ResetPasswordForm() {
   }, [searchParams, setFocus]);
 
   const getPasswordStrength = (password: string) => {
-    if (!password) return { score: 0, text: '' };
+    if (!password) {return { score: 0, text: '' };}
 
     const validation = validatePassword(password);
     if (validation.isValid) {

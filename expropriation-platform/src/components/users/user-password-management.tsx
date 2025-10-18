@@ -64,7 +64,7 @@ export function UserPasswordManagement({ userId, userName, userEmail }: UserPass
 
   // Calculate password strength
   const calculatePasswordStrength = (password: string) => {
-    if (!password) return 0;
+    if (!password) {return 0;}
 
     let strength = 0;
     const checks = [
@@ -123,8 +123,8 @@ export function UserPasswordManagement({ userId, userName, userEmail }: UserPass
 
   // Get password strength color and text
   const getPasswordStrengthInfo = (strength: number) => {
-    if (strength <= 2) return { color: 'bg-red-500', text: 'Débil', textColor: 'text-red-500' };
-    if (strength <= 4) return { color: 'bg-yellow-500', text: 'Media', textColor: 'text-yellow-500' };
+    if (strength <= 2) {return { color: 'bg-red-500', text: 'Débil', textColor: 'text-red-500' };}
+    if (strength <= 4) {return { color: 'bg-yellow-500', text: 'Media', textColor: 'text-yellow-500' };}
     return { color: 'bg-green-500', text: 'Fuerte', textColor: 'text-green-500' };
   };
 
