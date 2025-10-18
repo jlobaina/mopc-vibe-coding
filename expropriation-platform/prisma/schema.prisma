@@ -126,8 +126,9 @@ model Department {
   updatedAt DateTime     @updatedAt
 
   // Relations
-  users User[]
-  cases Case[]
+  users                   User[]
+  cases                   Case[]
+  userDepartmentAssignments UserDepartmentAssignment[]
 
   @@index([parentId])
   @@index([isActive])
@@ -193,9 +194,55 @@ model User {
   phone                String?
   avatar               String?
   isActive             Boolean   @default(true)
+
+  // Status and suspension
+  isSuspended          Boolean   @default(false)
+  suspensionReason     String?
+  suspendedAt          DateTime?
+  suspendedBy          String?
+
+  // Login tracking
   lastLoginAt          DateTime?
+  lastLoginIp          String?
+  lastLoginUserAgent   String?
+  loginCount           Int       @default(0)
+  failedLoginAttempts  Int       @default(0)
+  lockedUntil          DateTime?
+
+  // Password management
   passwordResetToken   String?
   passwordResetExpires DateTime?
+  passwordChangedAt    DateTime  @default(now())
+  mustChangePassword   Boolean   @default(false)
+
+  // Profile information
+  jobTitle             String?
+  bio                  String?
+  officeLocation       String?
+  workingHours         String?   // JSON with schedule
+  preferredLanguage    String    @default("es")
+  timezone             String    @default("America/Santo_Domingo")
+
+  // Security settings
+  twoFactorEnabled     Boolean   @default(false)
+  twoFactorSecret      String?
+  backupCodes          String?   // JSON array of backup codes
+
+  // Email preferences
+  emailNotifications   Boolean   @default(true)
+  emailMarketing       Boolean   @default(false)
+  emailDigest          Boolean   @default(true)
+
+  // System settings
+  theme                String    @default("light")
+  dateRange            String?   // JSON with preferences
+  dashboardConfig      String?   // JSON with dashboard layout
+
+  // Soft delete
+  deletedAt            DateTime?
+  deletedBy            String?
+
+  // Timestamps
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
 
@@ -218,6 +265,8 @@ model User {
   notifications Notification[]
   assignments   CaseAssignment[]
   sessions      UserSession[]
+  passwordHistories PasswordHistory[]
+  departmentAssignments UserDepartmentAssignment[]
 
   // NextAuth.js relations
   accounts      Account[]
@@ -228,7 +277,9 @@ model User {
   @@index([departmentId])
   @@index([roleId])
   @@index([isActive])
+  @@index([isSuspended])
   @@index([lastLoginAt])
+  @@index([deletedAt])
   @@map("users")
 }
 
@@ -238,6 +289,7 @@ model UserSession {
   userId       String
   ipAddress    String?
   userAgent    String?
+  deviceInfo   String?  // JSON with device details
   isActive     Boolean  @default(true)
   expiresAt    DateTime
   createdAt    DateTime @default(now())
@@ -251,6 +303,44 @@ model UserSession {
   @@index([userId])
   @@index([expiresAt])
   @@map("user_sessions")
+}
+
+model PasswordHistory {
+  id             String   @id @default(cuid())
+  passwordHash   String
+  changedAt      DateTime @default(now())
+  changedBy      String?  // ID of user who changed the password
+  changeReason   String?  // admin_reset, user_change, expired, etc.
+  ipAddress      String?
+  userAgent      String?
+
+  // Relations
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([changedAt])
+  @@map("password_histories")
+}
+
+model UserDepartmentAssignment {
+  id           String   @id @default(cuid())
+  userId       String
+  departmentId String
+  isPrimary    Boolean  @default(false)
+  assignedAt   DateTime @default(now())
+  assignedBy   String?  // ID of user who made the assignment
+  isActive     Boolean  @default(true)
+  permissions  String?  // JSON with specific permissions for this department
+
+  // Relations
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  department Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, departmentId])
+  @@index([userId])
+  @@index([departmentId])
+  @@map("user_department_assignments")
 }
 
 model Case {

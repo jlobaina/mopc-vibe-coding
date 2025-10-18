@@ -4,6 +4,7 @@ import { PrismaAdapter } from '@next-auth/prisma-adapter';
 import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
+import { logUserLogin, logFailedLogin } from '@/lib/activity-logger';
 
 const credentialsSchema = z.object({
   email: z.string().email('Correo electrónico inválido'),
@@ -19,7 +20,7 @@ export const authOptions: NextAuthOptions = {
         email: { label: 'Correo electrónico', type: 'email' },
         password: { label: 'Contraseña', type: 'password' },
       },
-      async authorize(credentials) {
+      async authorize(credentials, req) {
         if (!credentials?.email || !credentials?.password) {
           return null;
         }
@@ -31,6 +32,8 @@ export const authOptions: NextAuthOptions = {
         }
 
         const { email, password } = validatedCredentials.data;
+        const ipAddress = req.headers['x-forwarded-for'] as string || req.ip;
+        const userAgent = req.headers['user-agent'];
 
         // Find user with all necessary relations
         const user = await prisma.user.findUnique({
@@ -41,20 +44,73 @@ export const authOptions: NextAuthOptions = {
           },
         });
 
-        if (!user || !user.isActive) {
+        if (!user) {
+          // Log failed login for non-existent user
+          await logFailedLogin(email, ipAddress, userAgent);
+          return null;
+        }
+
+        // Check if user is active and not suspended
+        if (!user.isActive || user.isSuspended) {
+          await logFailedLogin(email, ipAddress, userAgent);
+          return null;
+        }
+
+        // Check if account is locked due to failed attempts
+        if (user.lockedUntil && user.lockedUntil > new Date()) {
           return null;
         }
 
         // Verify password
         const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
         if (!isPasswordValid) {
+          // Log failed login
+          await logFailedLogin(email, ipAddress, userAgent);
           return null;
         }
 
-        // Update last login time
-        await prisma.user.update({
-          where: { id: user.id },
-          data: { lastLoginAt: new Date() },
+        // Check if user must change password
+        if (user.mustChangePassword) {
+          // Return user but with a flag to force password change
+          const userData = {
+            id: user.id,
+            email: user.email,
+            name: `${user.firstName} ${user.lastName}`,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            username: user.username,
+            role: user.role.name,
+            department: user.department.name,
+            departmentId: user.departmentId,
+            roleId: user.roleId,
+            permissions: user.role.permissions as Record<string, boolean>,
+            isActive: user.isActive,
+            phone: user.phone,
+            avatar: user.avatar,
+            mustChangePassword: true,
+          };
+
+          return userData;
+        }
+
+        // Log successful login and update user info
+        await logUserLogin(user.id, ipAddress, userAgent);
+
+        // Create user session record
+        const sessionToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+        await prisma.userSession.create({
+          data: {
+            userId: user.id,
+            sessionToken,
+            ipAddress,
+            userAgent,
+            deviceInfo: JSON.stringify({
+              ip: ipAddress,
+              userAgent,
+              timestamp: new Date().toISOString(),
+            }),
+            expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours
+          },
         });
 
         // Return user data in the format expected by NextAuth
@@ -73,6 +129,7 @@ export const authOptions: NextAuthOptions = {
           isActive: user.isActive,
           phone: user.phone,
           avatar: user.avatar,
+          sessionToken,
         };
       },
     }),

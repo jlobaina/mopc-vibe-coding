@@ -2,12 +2,14 @@
 
 import { useAuth } from '@/hooks/use-auth';
 import { ProtectedRoute } from '@/components/auth/protected-route';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Building2, Users, FileText, Settings, LogOut, User } from 'lucide-react';
 
 export default function DashboardPage() {
   const { user, signOut, isSuperAdmin, isDepartmentAdmin, isAnalyst, isSupervisor } = useAuth();
+  const router = useRouter();
 
   return (
     <ProtectedRoute>
@@ -94,14 +96,26 @@ export default function DashboardPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2">
-                    <Button variant="outline" className="w-full justify-start">
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start"
+                      onClick={() => router.push('/users')}
+                    >
                       Ver todos los usuarios
                     </Button>
-                    <Button variant="outline" className="w-full justify-start">
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start"
+                      onClick={() => router.push('/users?action=create')}
+                    >
                       Crear nuevo usuario
                     </Button>
                     {isSuperAdmin && (
-                      <Button variant="outline" className="w-full justify-start">
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start"
+                        onClick={() => router.push('/users?action=manage-roles')}
+                      >
                         Administrar roles
                       </Button>
                     )}
@@ -122,15 +136,27 @@ export default function DashboardPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
-                  <Button variant="outline" className="w-full justify-start">
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start"
+                    onClick={() => router.push('/cases')}
+                  >
                     Ver todos los casos
                   </Button>
                   {(isAnalyst || isDepartmentAdmin || isSuperAdmin) && (
-                    <Button variant="outline" className="w-full justify-start">
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start"
+                      onClick={() => router.push('/cases?action=create')}
+                    >
                       Crear nuevo caso
                     </Button>
                   )}
-                  <Button variant="outline" className="w-full justify-start">
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start"
+                    onClick={() => router.push('/reports')}
+                  >
                     Reportes
                   </Button>
                 </div>
@@ -150,13 +176,25 @@ export default function DashboardPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2">
-                    <Button variant="outline" className="w-full justify-start">
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start"
+                      onClick={() => router.push('/admin/settings')}
+                    >
                       Configuración general
                     </Button>
-                    <Button variant="outline" className="w-full justify-start">
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start"
+                      onClick={() => router.push('/departments')}
+                    >
                       Departamentos
                     </Button>
-                    <Button variant="outline" className="w-full justify-start">
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start"
+                      onClick={() => router.push('/admin/logs')}
+                    >
                       Logs del sistema
                     </Button>
                   </div>

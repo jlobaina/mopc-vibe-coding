@@ -1,15 +1,17 @@
 import { NextResponse } from 'next/server';
 import { getToken } from 'next-auth/jwt';
+import type { NextRequest } from 'next/server';
 
-export default async function middleware(req) {
+export default async function middleware(req: NextRequest) {
   const token = await getToken({
     req,
-    secret: process.env.NEXTAUTH_SECRET
+    secret: process.env.NEXTAUTH_SECRET || 'fallback-secret'
   });
   const { pathname } = req.nextUrl;
 
-  // Allow access to auth pages and API routes without authentication
-  if (pathname.startsWith('/login') ||
+  // Allow access to home page, auth pages and API routes without authentication
+  if (pathname === '/' ||
+      pathname.startsWith('/login') ||
       pathname.startsWith('/forgot-password') ||
       pathname.startsWith('/reset-password') ||
       pathname.startsWith('/api/auth') ||
