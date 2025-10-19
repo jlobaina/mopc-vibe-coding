@@ -515,6 +515,7 @@ model Department {
   destinationTransfers   DepartmentTransfer[] @relation("DestinationDepartment")
   documentPermissions DocumentPermission[] @relation("DocumentDepartmentPermissions")
   meetingTemplates MeetingTemplate[] @relation("DepartmentTemplates")
+  notificationTemplates NotificationTemplate[] @relation("DepartmentNotificationTemplates")
 
   @@index([parentId])
   @@index([isActive])
@@ -720,6 +721,12 @@ model User {
   detectedConflicts MeetingConflict[] @relation("ConflictsDetected")
   createdMeetingTemplates MeetingTemplate[] @relation("TemplatesCreated")
   approvedMeetingTemplates MeetingTemplate[] @relation("TemplatesApproved")
+
+  // Notification system relations
+  notificationPreference UserNotificationPreference?
+  webSocketConnections WebSocketConnection[]
+  pushSubscriptions PushSubscription[]
+  createdNotificationTemplates NotificationTemplate[] @relation("TemplatesCreated")
 
   // Delegation relations
   delegatedFromParticipations MeetingParticipant[] @relation("DelegatedFrom")
@@ -2038,25 +2045,564 @@ model MeetingConflict {
   @@map("meeting_conflicts")
 }
 
+// ========================================
+// COMPREHENSIVE NOTIFICATION SYSTEM MODELS
+// ========================================
+
+// Enhanced Notification Model with comprehensive features
 model Notification {
-  id      String           @id @default(cuid())
-  title   String
-  message String
-  type    NotificationType // info, warning, error, success
-  isRead  Boolean          @default(false)
+  id          String           @id @default(cuid())
+  title       String
+  message     String
+  type        NotificationType // info, warning, error, success, task_assigned, deadline_reminder, status_update, system_announcement
+  priority    String           @default("medium") // low, medium, high, urgent, critical
 
-  // Entity reference
-  entityType String? // case, meeting, document, etc.
-  entityId   String?
+  // Read status and tracking
+  isRead      Boolean          @default(false)
+  readAt      DateTime?
 
-  createdAt DateTime  @default(now())
-  readAt    DateTime?
+  // Entity relationships
+  entityType  String?          // case, meeting, document, user, department, workflow, etc.
+  entityId    String?
+
+  // Delivery configuration
+  channels    Json?            // Delivery channels (in_app, email, sms, push, etc.)
+  sendEmail   Boolean          @default(false)
+  emailSent   Boolean          @default(false)
+  sendSms     Boolean          @default(false)
+  smsSent     Boolean          @default(false)
+  sendPush    Boolean          @default(false)
+  pushSent    Boolean          @default(false)
+
+  // Scheduling and automation
+  scheduledAt DateTime?
+  expiresAt   DateTime?
+
+  // Content and personalization
+  metadata    Json?            // Additional notification data
+  templateId  String?          // Template used for this notification
+  variables   Json?            // Template variables and their values
+
+  // User interactions
+  clickedAt   DateTime?
+  respondedAt DateTime?
+  response    String?          // User's response to the notification
+
+  // Batch operations
+  batchId     String?          // For batch notification operations
+  batchIndex  Int?             // Index within batch
+
+  // Escalation and reminders
+  reminderCount Int            @default(0)
+  maxReminders   Int           @default(3)
+  nextReminderAt DateTime?
+
+  // System metadata
+  correlationId String?        // For tracking related notifications
+  source       String?         // Source system or module
+  sourceId     String?         // ID in source system
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Relations
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  template NotificationTemplate? @relation("TemplateNotifications", fields: [templateId], references: [id])
+
+  history NotificationHistory[]
+  deliveries NotificationDelivery[]
+
+  @@index([userId])
+  @@index([type])
+  @@index([priority])
+  @@index([isRead])
+  @@index([createdAt])
+  @@index([scheduledAt])
+  @@index([expiresAt])
+  @@index([entityType, entityId])
+  @@index([batchId])
+  @@index([correlationId])
   @@map("notifications")
+}
+
+// Notification Template Model
+model NotificationTemplate {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  category    String   @default("GENERAL") // SYSTEM, CASE, MEETING, DOCUMENT, USER, DEADLINE, etc.
+  type        NotificationType
+
+  // Template content
+  subject     String?  // For email notifications
+  content     String   // Template content with placeholders
+  htmlContent String?  // HTML version for emails
+
+  // Template configuration
+  variables   Json?    // Template variables definition
+  placeholders Json?   // Available placeholders
+  defaultChannels Json? // Default delivery channels
+
+  // Template metadata
+  version     Int      @default(1)
+  isActive    Boolean  @default(true)
+  isDefault   Boolean  @default(false)
+
+  // Usage statistics
+  usageCount  Int      @default(0)
+  lastUsedAt  DateTime?
+
+  // Approval workflow
+  requiresApproval Boolean @default(false)
+  approvedBy  String?
+  approvedAt  DateTime?
+
+  // Multi-language support
+  language    String   @default("es")
+  translations Json?   // Translations for different languages
+
+  // Access control
+  requiredRole String?  // Role required to use this template
+  departmentId String?  // Department-specific template
+
+  createdBy String
+  creator  User @relation("TemplatesCreated", fields: [createdBy], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  notifications Notification[] @relation("TemplateNotifications")
+  department Department? @relation("DepartmentNotificationTemplates", fields: [departmentId], references: [id])
+  reminderConfigs ReminderConfig[] @relation("ReminderTemplates")
+
+  @@index([category])
+  @@index([type])
+  @@index([isActive])
+  @@index([isDefault])
+  @@index([language])
+  @@index([createdBy])
+  @@index([departmentId])
+  @@map("notification_templates")
+}
+
+// User Notification Preference Model
+model UserNotificationPreference {
+  id             String @id @default(cuid())
+  userId         String @unique
+
+  // Global preferences
+  enableEmailNotifications   Boolean @default(true)
+  enableSmsNotifications     Boolean @default(false)
+  enablePushNotifications    Boolean @default(true)
+  enableInAppNotifications   Boolean @default(true)
+
+  // Quiet hours
+  quietHoursEnabled          Boolean @default(false)
+  quietHoursStart            String? // HH:MM format
+  quietHoursEnd              String? // HH:MM format
+  timezone                   String @default("America/Santo_Domingo")
+
+  // Frequency controls
+  dailyDigestEnabled         Boolean @default(false)
+  weeklyDigestEnabled        Boolean @default(false)
+  maxNotificationsPerHour    Int     @default(50)
+  maxNotificationsPerDay     Int     @default(200)
+
+  // Type-specific preferences
+  typePreferences             Json?   // Preferences by notification type
+
+  // Channel preferences by type
+  channelPreferences         Json?   // Channel preferences by notification type
+
+  // Department preferences
+  departmentPreferences      Json?   // Preferences by department
+
+  // Priority preferences
+  priorityPreferences        Json?   // Preferences by priority level
+
+  // Custom filters
+  customFilters              Json?   // Custom notification filters
+  blockedSenders             Json?   // Blocked senders
+  allowedSenders             Json?   // Whitelisted senders
+
+  // Mobile preferences
+  mobileVibrationEnabled     Boolean @default(true)
+  mobileSoundEnabled         Boolean @default(true)
+  mobileBadgeEnabled         Boolean @default(true)
+
+  // Email preferences
+  emailFormatting            String  @default("both") // text, html, both
+  emailSignatureEnabled      Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_notification_preferences")
+}
+
+// Notification History Model (audit trail)
+model NotificationHistory {
+  id           String   @id @default(cuid())
+  notificationId String
+
+  // Event details
+  eventType    String   // created, sent, delivered, read, clicked, failed, expired, etc.
+  status       String?  // success, failed, pending, etc.
+
+  // Event data
+  eventData    Json?    // Event-specific data
+  errorData    Json?    // Error information if applicable
+
+  // Timing information
+  eventAt      DateTime @default(now())
+  duration     Int?     // Event duration in milliseconds
+
+  // User and system information
+  userId       String?  // User who triggered the event
+  ipAddress    String?
+  userAgent    String?
+  source       String?  // Source system or component
+
+  // Delivery information
+  channel      String?  // Delivery channel (in_app, email, sms, push)
+  provider     String?  // Service provider (ses, twilio, fcm, etc.)
+  externalId   String?  // External tracking ID
+
+  // Metadata
+  metadata     Json?
+  correlationId String?
+
+  // Relations
+  notification Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+
+  @@index([notificationId])
+  @@index([eventType])
+  @@index([eventAt])
+  @@index([channel])
+  @@index([status])
+  @@index([correlationId])
+  @@map("notification_histories")
+}
+
+// Notification Delivery Model (delivery tracking)
+model NotificationDelivery {
+  id             String   @id @default(cuid())
+  notificationId String
+
+  // Delivery configuration
+  channel        String   // in_app, email, sms, push, webhook
+  provider       String?  // Service provider
+
+  // Recipient information
+  recipient      String   // Email address, phone number, device token, etc.
+  recipientType  String   // email, phone, device_token, webhook_url, etc.
+
+  // Delivery status
+  status         String   @default("pending") // pending, processing, sent, delivered, failed, expired, cancelled
+  attempts       Int      @default(0)
+  maxAttempts    Int      @default(3)
+
+  // Timing information
+  scheduledAt    DateTime?
+  sentAt         DateTime?
+  deliveredAt    DateTime?
+  failedAt       DateTime?
+
+  // Response information
+  response       Json?    // Provider response
+  error          Json?    // Error information
+  messageId      String?  // Provider message ID
+
+  // User interactions
+  openedAt       DateTime?
+  clickedAt      DateTime?
+  respondedAt    DateTime?
+
+  // Cost tracking
+  cost           Float?   // Delivery cost
+  currency       String   @default("USD")
+
+  // Retry configuration
+  retryAfter     DateTime?
+  retryStrategy  String?  // exponential, linear, fixed
+
+  // Metadata
+  metadata       Json?
+  correlationId  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  notification Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+
+  @@index([notificationId])
+  @@index([channel])
+  @@index([status])
+  @@index([scheduledAt])
+  @@index([sentAt])
+  @@index([correlationId])
+  @@map("notification_deliveries")
+}
+
+// Email Queue Model (for batch email processing)
+model EmailQueue {
+  id             String   @id @default(cuid())
+
+  // Email details
+  to             String   // Recipient email
+  cc             String?  // CC recipients
+  bcc            String?  // BCC recipients
+  subject        String
+  textContent    String?  // Plain text content
+  htmlContent    String?  // HTML content
+
+  // Sender information
+  fromName       String?  // Sender display name
+  fromEmail      String?  // Sender email (overrides default)
+  replyTo        String?  // Reply-to address
+
+  // Queue management
+  status         String   @default("pending") // pending, processing, sent, failed, cancelled
+  priority       String   @default("medium") // low, medium, high, urgent
+  attempts       Int      @default(0)
+  maxAttempts    Int      @default(3)
+
+  // Timing
+  scheduledAt    DateTime @default(now())
+  sentAt         DateTime?
+  failedAt       DateTime?
+
+  // Provider configuration
+  provider       String?  // SMTP service provider
+  templateId     String?  // Template used
+
+  // Tracking and analytics
+  messageId      String?  // Provider message ID
+  openedAt       DateTime?
+  clickedAt      DateTime?
+  bouncedAt      DateTime?
+  bouncedReason  String?
+  unsubscribedAt DateTime?
+
+  // Error handling
+  error          Json?    // Last error information
+  retryAfter     DateTime?
+
+  // Metadata
+  metadata       Json?
+  correlationId  String?
+  batchId        String?  // For batch operations
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([priority])
+  @@index([scheduledAt])
+  @@index([sentAt])
+  @@index([batchId])
+  @@index([correlationId])
+  @@map("email_queue")
+}
+
+// WebSocket Connection Model
+model WebSocketConnection {
+  id             String   @id @default(cuid())
+  userId         String
+
+  // Connection details
+  socketId       String   @unique
+  connectionId   String   @unique // Connection identifier
+  serverId       String?  // Server instance ID
+
+  // Session information
+  ipAddress      String?
+  userAgent      String?
+  geolocation    Json?    // Geographic location
+
+  // Connection status
+  status         String   @default("active") // active, inactive, disconnected, error
+  lastActivity   DateTime @default(now())
+  connectedAt    DateTime @default(now())
+  disconnectedAt DateTime?
+
+  // Room subscriptions
+  subscriptions  Json?    // Channels/rooms subscribed to
+  userRooms      Json?    // User-specific rooms
+  departmentRooms Json?   // Department-specific rooms
+
+  // Performance metrics
+  messagesSent   Int      @default(0)
+  messagesReceived Int    @default(0)
+  bytesTransferred BigInt  @default(0)
+
+  // Connection quality
+  latency        Int?     // Connection latency in ms
+  quality        String?  // excellent, good, fair, poor
+
+  // Security
+  authToken      String?  // Authentication token
+  sessionToken   String?  // Session token
+
+  // Metadata
+  metadata       Json?
+  deviceInfo     Json?    // Device and browser information
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([socketId])
+  @@index([connectionId])
+  @@index([status])
+  @@index([lastActivity])
+  @@index([connectedAt])
+  @@index([serverId])
+  @@map("websocket_connections")
+}
+
+// Push Notification Subscription Model
+model PushSubscription {
+  id           String   @id @default(cuid())
+  userId       String
+
+  // Subscription details
+  endpoint     String   // Push service endpoint
+  p256dhKey    String   // P-256 ECDH public key
+  authKey      String   // Authentication secret
+
+  // Device information
+  userAgent    String?
+  deviceType   String?  // desktop, mobile, tablet
+  platform     String?  // chrome, firefox, safari, edge
+
+  // Application details
+  appVersion   String?
+  bundleId     String?
+
+  // Subscription status
+  isActive     Boolean  @default(true)
+  subscribedAt DateTime @default(now())
+  unsubscribedAt DateTime?
+
+  // Usage statistics
+  notificationsSent Int @default(0)
+  lastUsedAt    DateTime?
+
+  // Security
+  vapidKey     String?  // VAPID public key
+
+  // Metadata
+  metadata     Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([endpoint])
+  @@index([userId])
+  @@index([isActive])
+  @@index([deviceType])
+  @@index([platform])
+  @@map("push_subscriptions")
+}
+
+// Reminder Configuration Model
+model ReminderConfig {
+  id          String   @id @default(cuid())
+  name        String
+  description String
+  type        String   // deadline, follow_up, escalation, maintenance, daily_digest, weekly_summary
+  schedule    String   // Cron expression or simple time expression
+
+  // Activation control
+  isActive    Boolean  @default(true)
+
+  // Conditions for triggering reminders
+  conditions  Json     // Entity type, filters, timing conditions
+
+  // Template and content
+  templateId  String?  // Template to use for notifications
+  subject     String?  // Subject override
+  message     String?  // Message override
+
+  // Recipient configuration
+  recipients  Json     // Who should receive the reminder
+
+  // Delivery configuration
+  channels    Json     // Delivery channels (email, push, in_app, etc.)
+  priority    String   @default("medium")
+
+  // Timing and frequency
+  maxReminders Int     @default(3) // Maximum number of reminders
+  reminderInterval Int  @default(24) // Hours between reminders
+
+  // Metadata
+  metadata    Json?    // Additional configuration data
+  tags        String?  // Tags for categorization
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  template NotificationTemplate? @relation("ReminderTemplates", fields: [templateId], references: [id])
+  jobs ReminderJob[]
+
+  @@index([type])
+  @@index([isActive])
+  @@index([schedule])
+  @@index([createdAt])
+  @@map("reminder_configs")
+}
+
+// Reminder Job Model (individual reminder instances)
+model ReminderJob {
+  id          String   @id @default(cuid())
+  configId    String
+
+  // Scheduling
+  scheduledAt DateTime
+  executedAt  DateTime?
+
+  // Status and result
+  status      String   @default("pending") // pending, running, completed, failed, cancelled
+  result      Json?    // Execution results
+  error       String?  // Error message if failed
+
+  // Entity context
+  entityId    String?  // Entity this reminder is for
+  entityType  String?  // Type of entity (case, task, meeting, etc.)
+
+  // Retry configuration
+  attempts    Int      @default(0)
+  maxAttempts Int      @default(3)
+  nextRetryAt DateTime?
+
+  // Metadata
+  metadata    Json?
+  correlationId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  config ReminderConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
+
+  @@index([configId])
+  @@index([status])
+  @@index([scheduledAt])
+  @@index([executedAt])
+  @@index([entityType, entityId])
+  @@index([correlationId])
+  @@map("reminder_jobs")
 }
 
 // NextAuth.js required models
