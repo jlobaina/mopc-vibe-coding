@@ -3,9 +3,15 @@ import { Inter } from "next/font/google";
 import { AuthProvider } from "@/components/providers/auth-provider";
 import { ThemeProvider } from "@/components/theme/theme-provider";
 import { TutorialProvider } from "@/components/tutorial/tutorial-provider";
+import { EnhancedToastProvider } from "@/components/notifications/enhanced-toast-provider";
+import { KeyboardShortcutsProvider } from "@/components/navigation/enhanced-keyboard-shortcuts";
 import { SkipLink } from "@/components/ui/skip-link";
+import { SkipLink as AccessibleSkipLink } from "@/components/ui/accessibility";
 import { PerformanceMonitor } from "@/components/performance/performance-monitor";
+import { PerformanceMonitor as PerfMonitor } from "@/lib/performance";
 import { TutorialOverlay } from "@/components/tutorial/tutorial-overlay";
+import { QuickAccessButton } from "@/components/navigation/enhanced-keyboard-shortcuts";
+import { MicroInteractionStyles } from "@/components/ui/micro-interactions";
 import "./globals.css";
 
 const inter = Inter({
@@ -47,16 +53,32 @@ export default function RootLayout({
         >
           <TutorialProvider>
             <AuthProvider>
-              <PerformanceMonitor />
-              <SkipLink className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 z-50" />
+              <KeyboardShortcutsProvider>
+                <EnhancedToastProvider>
+                  <PerfMonitor />
+                  <MicroInteractionStyles />
 
-              <div className="min-h-screen flex flex-col bg-background text-foreground">
-                <main id="main-content" className="flex-1 focus:outline-none" tabIndex={-1}>
-                  {children}
-                </main>
-              </div>
+                  {/* Skip links for accessibility */}
+                  <AccessibleSkipLink href="#main-content">
+                    Saltar al contenido principal
+                  </AccessibleSkipLink>
+                  <AccessibleSkipLink href="#navigation">
+                    Saltar a la navegación
+                  </AccessibleSkipLink>
 
-              <TutorialOverlay />
+                  <div className="min-h-screen flex flex-col bg-background text-foreground">
+                    <main id="main-content" className="flex-1 focus:outline-none" tabIndex={-1}>
+                      {children}
+                    </main>
+                  </div>
+
+                  {/* Quick access floating button */}
+                  <QuickAccessButton />
+
+                  {/* Tutorial overlay */}
+                  <TutorialOverlay />
+                </EnhancedToastProvider>
+              </KeyboardShortcutsProvider>
             </AuthProvider>
           </TutorialProvider>
         </ThemeProvider>

@@ -31,6 +31,10 @@ import { DashboardStats } from '@/components/dashboard/dashboard-stats';
 import { DashboardCharts } from '@/components/dashboard/dashboard-charts';
 import { DashboardCases } from '@/components/dashboard/dashboard-cases';
 import { DashboardAlerts } from '@/components/dashboard/dashboard-alerts';
+import { GlobalSearch } from '@/components/search/global-search';
+import { FavoritesPanel } from '@/components/favorites/favorites-panel';
+import { DataExport } from '@/components/export/data-export';
+import { CaseCalendar } from '@/components/calendar/case-calendar';
 
 export default function DashboardPage() {
   const { user, signOut, isSuperAdmin, isDepartmentAdmin, isAnalyst, isSupervisor } = useAuth();
@@ -84,6 +88,8 @@ export default function DashboardPage() {
                 </div>
               </div>
               <div className="flex items-center space-x-4">
+                <GlobalSearch />
+                <DataExport />
                 <ThemeToggle />
                 <KeyboardShortcutsPanel
                   shortcuts={shortcuts.map(s => ({ ...s, category: 'Navegación' }))}
@@ -147,10 +153,12 @@ export default function DashboardPage() {
             {/* Quick Actions */}
             <section className="mb-8" aria-labelledby="quick-actions-heading">
               <h2 id="quick-actions-heading" className="sr-only">Acciones Rápidas</h2>
-              <div
-                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
-                data-tutorial="quick-actions"
-              >
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2">
+                  <div
+                    className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4"
+                    data-tutorial="quick-actions"
+                  >
                 <Card
                   className="hover:shadow-md transition-all duration-200 cursor-pointer group focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
                   onClick={() => router.push('/cases')}
@@ -232,12 +240,17 @@ export default function DashboardPage() {
                   </Card>
                 )}
               </div>
+                </div>
+                <div className="lg:col-span-1">
+                  <FavoritesPanel />
+                </div>
+              </div>
             </section>
 
             {/* Dashboard Tabs */}
             <Tabs defaultValue="overview" className="space-y-6" data-tutorial="dashboard-tabs">
               <TabsList
-                className="grid w-full grid-cols-2 sm:grid-cols-4 lg:w-auto lg:grid-cols-4"
+                className="grid w-full grid-cols-2 sm:grid-cols-5 lg:w-auto lg:grid-cols-5"
                 role="tablist"
                 aria-label="Vistas del panel"
               >
@@ -272,6 +285,16 @@ export default function DashboardPage() {
                   <span className="hidden sm:inline">Casos</span>
                 </TabsTrigger>
                 <TabsTrigger
+                  value="calendar"
+                  className="flex items-center space-x-2"
+                  role="tab"
+                  aria-selected="false"
+                  aria-controls="calendar-panel"
+                >
+                  <Clock className="h-4 w-4" />
+                  <span className="hidden sm:inline">Calendario</span>
+                </TabsTrigger>
+                <TabsTrigger
                   value="alerts"
                   className="flex items-center space-x-2"
                   role="tab"
@@ -296,6 +319,10 @@ export default function DashboardPage() {
                   departmentId={user?.departmentId}
                   userId={user?.id}
                 />
+              </TabsContent>
+
+              <TabsContent value="calendar" className="space-y-6" id="calendar-panel" role="tabpanel">
+                <CaseCalendar />
               </TabsContent>
 
               <TabsContent value="alerts" className="space-y-6" id="alerts-panel" role="tabpanel">

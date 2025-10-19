@@ -765,6 +765,7 @@ model User {
   notificationChannelsCreated SystemNotificationChannel[] @relation("SystemNotificationChannelCreator")
   notificationChannelsUpdated SystemNotificationChannel[] @relation("SystemNotificationChannelUpdater")
   systemHealthChecks SystemHealthCheck[] @relation("SystemHealthCheckCreator")
+  favorites Favorite[] @relation("UserFavorites")
 
   // NextAuth.js relations
   accounts      Account[]
@@ -4634,4 +4635,29 @@ model SystemHealthCheck {
   @@index([isActive])
   @@index([lastCheckedAt])
   @@map("system_health_checks")
+}
+
+// Favorites Management
+model Favorite {
+  id            String   @id @default(cuid())
+  userId        String
+  type          String   // case, document, user, department
+  itemId        String
+  title         String
+  description   String?
+  url           String
+  metadata      Json?    // Additional metadata about the favorited item
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  user          User @relation("UserFavorites", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, type, itemId])
+  @@index([userId])
+  @@index([type])
+  @@index([itemId])
+  @@index([createdAt])
+  @@map("favorites")
 }
