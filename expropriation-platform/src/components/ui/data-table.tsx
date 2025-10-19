@@ -249,10 +249,60 @@ export function DataTable<T extends Record<string, any>>({
     return <span>{String(value)}</span>;
   };
 
+  // Helper function to create a unique key for any value type
+  const createUniqueKey = (value: any, index: number): string => {
+    if (value === null || value === undefined) {
+      return `null-${index}`;
+    }
+    if (typeof value === 'object') {
+      // For objects, use JSON stringification or a combination of properties
+      try {
+        return `obj-${JSON.stringify(value)}`;
+      } catch {
+        // Fallback for circular references or non-serializable objects
+        return `obj-${index}`;
+      }
+    }
+    if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+      return `${typeof value}-${value}`;
+    }
+    // For other types (dates, etc.)
+    return `${typeof value}-${String(value)}-${index}`;
+  };
+
+  // Helper function to format value for display
+  const formatDisplayValue = (value: any): string => {
+    if (value === null || value === undefined) {
+      return 'N/A';
+    }
+    if (typeof value === 'boolean') {
+      return value ? 'Sí' : 'No';
+    }
+    if (value instanceof Date) {
+      return value.toLocaleDateString();
+    }
+    if (typeof value === 'object') {
+      try {
+        return JSON.stringify(value);
+      } catch {
+        return '[Objeto]';
+      }
+    }
+    return String(value);
+  };
+
   // Get unique values for filtering
   const getFilterValues = (columnId: string) => {
     const values = data.map(item => item[columnId]).filter(Boolean);
-    return [...new Set(values)];
+    // Use a Map to handle uniqueness with proper key generation
+    const uniqueValues = new Map();
+    values.forEach((value, index) => {
+      const key = createUniqueKey(value, index);
+      if (!uniqueValues.has(key)) {
+        uniqueValues.set(key, value);
+      }
+    });
+    return Array.from(uniqueValues.values());
   };
 
   return (
@@ -344,9 +394,12 @@ export function DataTable<T extends Record<string, any>>({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="ALL">Todos</SelectItem>
-                  {getFilterValues(column.id).map(value => (
-                    <SelectItem key={String(value)} value={String(value)}>
-                      {String(value)}
+                  {getFilterValues(column.id).map((value, index) => (
+                    <SelectItem
+                      key={createUniqueKey(value, index)}
+                      value={String(value)}
+                    >
+                      {formatDisplayValue(value)}
                     </SelectItem>
                   ))}
                 </SelectContent>

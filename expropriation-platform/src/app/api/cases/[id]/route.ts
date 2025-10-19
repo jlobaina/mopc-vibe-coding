@@ -104,8 +104,8 @@ export async function GET(
           orderBy: { createdAt: 'desc' },
           take: 50
         },
-        meetings: {
-          orderBy: { scheduledFor: 'desc' }
+        caseMeetings: {
+          orderBy: { scheduledStart: 'desc' }
         },
         assignments: {
           include: {
@@ -124,7 +124,7 @@ export async function GET(
             documents: true,
             histories: true,
             activities: true,
-            meetings: true
+            caseMeetings: true
           }
         }
       }
