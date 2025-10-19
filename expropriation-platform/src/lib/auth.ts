@@ -194,3 +194,12 @@ export const authOptions: NextAuthOptions = {
   useSecureCookies: process.env.NODE_ENV === 'production',
   debug: process.env.NODE_ENV === 'development',
 };
+
+// Helper functions for server-side auth
+export async function getServerSession() {
+  const { getServerSession } = await import('next-auth/next');
+  return getServerSession(authOptions);
+}
+
+export const auth = getServerSession;
+export const getSession = getServerSession;

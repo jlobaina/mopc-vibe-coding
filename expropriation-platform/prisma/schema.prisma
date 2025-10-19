@@ -517,6 +517,10 @@ model Department {
   meetingTemplates MeetingTemplate[] @relation("DepartmentTemplates")
   notificationTemplates NotificationTemplate[] @relation("DepartmentNotificationTemplates")
 
+  // Admin panel relations
+  stageTimeConfigurations StageTimeConfiguration[]
+  usageStatistics UsageStatistics[] @relation("UsageStatisticsDepartment")
+
   @@index([parentId])
   @@index([isActive])
   @@index([isSuspended])
@@ -731,6 +735,36 @@ model User {
   // Delegation relations
   delegatedFromParticipations MeetingParticipant[] @relation("DelegatedFrom")
   delegatedToParticipations MeetingParticipant[] @relation("DelegatedTo")
+
+  // Admin panel relations
+  systemConfigurationsCreated SystemConfiguration[] @relation("SystemConfigurationCreator")
+  systemConfigurationsUpdated SystemConfiguration[] @relation("SystemConfigurationUpdater")
+  systemConfigurationsApproved SystemConfiguration[] @relation("SystemConfigurationApprover")
+  systemConfigurationHistory SystemConfigurationHistory[]
+  systemTemplatesSubmitted SystemTemplate[] @relation("TemplateSubmitter")
+  systemTemplatesReviewed SystemTemplate[] @relation("TemplateReviewer")
+  systemTemplatesApproved SystemTemplate[] @relation("TemplateApprover")
+  systemTemplatesCreated SystemTemplate[] @relation("SystemTemplateCreator")
+  systemTemplatesUpdated SystemTemplate[] @relation("SystemTemplateUpdater")
+  systemTemplateVersions SystemTemplateVersion[]
+  systemTemplateTests SystemTemplateTest[]
+  backupConfigurationsCreated BackupConfiguration[] @relation("BackupConfigurationCreator")
+  backupConfigurationsUpdated BackupConfiguration[] @relation("BackupConfigurationUpdater")
+  backupJobs BackupJob[]
+  restorationJobsCreated RestorationJob[] @relation("RestorationJobCreator")
+  restorationJobsApproved RestorationJob[] @relation("RestorationJobApprover")
+  systemLogs SystemLog[] @relation("SystemLogUser")
+  holidayCalendarsCreated HolidayCalendar[] @relation("HolidayCalendarCreator")
+  holidayCalendarsUpdated HolidayCalendar[] @relation("HolidayCalendarUpdater")
+  holidays Holiday[]
+  stageTimeConfigurationsCreated StageTimeConfiguration[] @relation("StageTimeConfigurationCreator")
+  stageTimeConfigurationsUpdated StageTimeConfiguration[] @relation("StageTimeConfigurationUpdater")
+  securityPoliciesCreated SecurityPolicy[] @relation("SecurityPolicyCreator")
+  securityPoliciesUpdated SecurityPolicy[] @relation("SecurityPolicyUpdater")
+  usageStatistics UsageStatistics[] @relation("UsageStatisticsUser")
+  notificationChannelsCreated SystemNotificationChannel[] @relation("SystemNotificationChannelCreator")
+  notificationChannelsUpdated SystemNotificationChannel[] @relation("SystemNotificationChannelUpdater")
+  systemHealthChecks SystemHealthCheck[] @relation("SystemHealthCheckCreator")
 
   // NextAuth.js relations
   accounts      Account[]
@@ -3936,4 +3970,668 @@ model RiskAlert {
   @@index([isActive])
   @@index([createdAt])
   @@map("risk_alerts")
+}
+
+// ========================================
+// ADMIN PANEL MODELS
+// ========================================
+
+// Enhanced System Configuration with versioning
+model SystemConfiguration {
+  id          String   @id @default(cuid())
+  key         String
+  value       Json     // Flexible value storage
+  type        String   // string, number, boolean, json, array
+  category    String
+  description String?
+  environment String?  // development, staging, production
+  isRequired  Boolean  @default(false)
+  isPublic    Boolean  @default(false) // Can be accessed without admin rights
+  validation  Json?    // Validation rules (min, max, pattern, etc.)
+
+  // Versioning
+  version     Int      @default(1)
+  previousValue Json?  // Previous value for rollback
+
+  // Metadata
+  createdBy   String
+  updatedBy   String?
+  approvedBy  String?
+  approvedAt  DateTime?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  effectiveAt DateTime @default(now()) // When this configuration becomes effective
+  expiresAt   DateTime? // When this configuration expires
+
+  // Relations
+  creator     User     @relation("SystemConfigurationCreator", fields: [createdBy], references: [id])
+  updater     User?    @relation("SystemConfigurationUpdater", fields: [updatedBy], references: [id])
+  approver    User?    @relation("SystemConfigurationApprover", fields: [approvedBy], references: [id])
+
+  // History tracking
+  history     SystemConfigurationHistory[]
+
+  @@unique([key, environment])
+  @@index([category])
+  @@index([environment])
+  @@index([effectiveAt])
+  @@index([expiresAt])
+  @@map("system_configurations")
+}
+
+// System Configuration History for audit trail
+model SystemConfigurationHistory {
+  id               String   @id @default(cuid())
+  configurationId  String
+  key              String
+  oldValue         Json?
+  newValue         Json?
+  type             String
+  category         String
+  changeReason     String?
+  changedBy        String
+  ipAddress        String?
+  userAgent        String?
+
+  createdAt        DateTime @default(now())
+
+  // Relations
+  configuration    SystemConfiguration @relation(fields: [configurationId], references: [id], onDelete: Cascade)
+  changer          User @relation(fields: [changedBy], references: [id])
+
+  @@index([configurationId])
+  @@index([key])
+  @@index([category])
+  @@index([changedBy])
+  @@index([createdAt])
+  @@map("system_configuration_history")
+}
+
+// System Template Management
+model SystemTemplate {
+  id          String   @id @default(cuid())
+  name        String
+  type        String   // email, document, report, notification, etc.
+  category    String
+  subject     String?
+  content     String   // Template content with placeholders
+  variables   Json?    // Available variables and their types
+  metadata    Json?    // Additional template metadata
+  description String?
+  language    String   @default("es")
+  isActive    Boolean  @default(true)
+  isDefault   Boolean  @default(false)
+  version     Int      @default(1)
+
+  // Approval workflow
+  status      String   @default("draft") // draft, pending_approval, approved, rejected, archived
+  submittedBy String
+  reviewedBy  String?
+  approvedBy  String?
+  reviewedAt  DateTime?
+  approvedAt  DateTime?
+  rejectionReason String?
+
+  // Usage tracking
+  usageCount  Int      @default(0)
+  lastUsedAt  DateTime?
+
+  createdBy   String
+  updatedBy   String?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  submitter   User     @relation("TemplateSubmitter", fields: [submittedBy], references: [id])
+  reviewer    User?    @relation("TemplateReviewer", fields: [reviewedBy], references: [id])
+  approver    User?    @relation("TemplateApprover", fields: [approvedBy], references: [id])
+  creator     User     @relation("SystemTemplateCreator", fields: [createdBy], references: [id])
+  updater     User?    @relation("SystemTemplateUpdater", fields: [updatedBy], references: [id])
+
+  // Version history
+  versions    SystemTemplateVersion[]
+
+  // Template testing
+  tests       SystemTemplateTest[]
+
+  @@unique([name, type, version])
+  @@index([type])
+  @@index([category])
+  @@index([status])
+  @@index([isActive])
+  @@index([isDefault])
+  @@map("system_templates")
+}
+
+// System Template Version
+model SystemTemplateVersion {
+  id          String   @id @default(cuid())
+  templateId  String
+  version     Int
+  content     String
+  variables   Json?
+  metadata    Json?
+  changelog   String?  // What changed in this version
+  createdBy   String
+  createdAt   DateTime @default(now())
+
+  // Relations
+  template    SystemTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  creator     User @relation(fields: [createdBy], references: [id])
+
+  @@unique([templateId, version])
+  @@index([templateId])
+  @@index([version])
+  @@index([createdAt])
+  @@map("system_template_versions")
+}
+
+// System Template Testing
+model SystemTemplateTest {
+  id          String   @id @default(cuid())
+  templateId  String
+  name        String
+  testData    Json     // Test data for template variables
+  expectedResult String? // Expected output
+  actualResult String?  // Actual output from test
+  status      String   @default("pending") // pending, passed, failed
+  error       String?  // Error message if test failed
+  testRunBy   String
+  testRunAt   DateTime @default(now())
+
+  // Relations
+  template    SystemTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  tester      User @relation(fields: [testRunBy], references: [id])
+
+  @@index([templateId])
+  @@index([status])
+  @@index([testRunAt])
+  @@map("system_template_tests")
+}
+
+// Backup Configuration and Management
+model BackupConfiguration {
+  id                String   @id @default(cuid())
+  name              String
+  type              String   // full, incremental, differential
+  schedule          String   // Cron expression
+  retentionDays     Int      @default(30)
+  compression       Boolean  @default(true)
+  encryption        Boolean  @default(false)
+  encryptionKey     String?
+
+  // Storage configuration
+  storageType       String   // local, s3, azure, gcs, etc.
+  storageConfig     Json     // Storage-specific configuration
+  storagePath       String?
+
+  // Backup scope
+  includeTables     Json?    // Tables to include as JSON array
+  excludeTables     Json?    // Tables to exclude as JSON array
+  includeFiles      Boolean  @default(true)
+  filePaths         Json?    // File paths to include as JSON array
+
+  // Backup settings
+  isActive          Boolean  @default(true)
+  maxBackupSize     Int?     // Maximum backup size in MB
+  verifyIntegrity   Boolean  @default(true)
+
+  // Notification settings
+  notifyOnSuccess   Boolean  @default(false)
+  notifyOnFailure   Boolean  @default(true)
+  notificationEmail String?
+
+  createdBy         String
+  updatedBy         String?
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  lastRunAt         DateTime?
+  nextRunAt         DateTime?
+
+  // Relations
+  creator           User     @relation("BackupConfigurationCreator", fields: [createdBy], references: [id])
+  updater           User?    @relation("BackupConfigurationUpdater", fields: [updatedBy], references: [id])
+
+  // Backup history
+  backups           BackupJob[]
+
+  @@index([isActive])
+  @@index([type])
+  @@index([nextRunAt])
+  @@map("backup_configurations")
+}
+
+// Backup Job Tracking
+model BackupJob {
+  id                String   @id @default(cuid())
+  configurationId   String
+  type              String   // manual, scheduled
+
+  // Job details
+  status            String   @default("pending") // pending, running, completed, failed, cancelled
+  progress          Float    @default(0) // 0-100 percentage
+  backupSize        Int?     // Size in bytes
+  compressedSize    Int?     // Compressed size in bytes
+  filePath          String?
+  checksum          String?  // MD5 or SHA256 checksum
+
+  // Timing
+  startedAt         DateTime?
+  completedAt       DateTime?
+  duration          Int?     // Duration in seconds
+
+  // Results
+  recordsBackedUp   Int?
+  filesBackedUp     Int?
+  errorMessage      String?
+  logs              String?
+
+  createdBy         String
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relations
+  configuration     BackupConfiguration @relation(fields: [configurationId], references: [id], onDelete: Cascade)
+  creator           User @relation(fields: [createdBy], references: [id])
+
+  // Restoration jobs
+  restorations      RestorationJob[]
+
+  @@index([configurationId])
+  @@index([status])
+  @@index([type])
+  @@index([createdAt])
+  @@index([completedAt])
+  @@map("backup_jobs")
+}
+
+// Restoration Job Tracking
+model RestorationJob {
+  id                String   @id @default(cuid())
+  backupJobId       String
+  type              String   // full, partial, table, file
+
+  // Restoration details
+  status            String   @default("pending") // pending, running, completed, failed, cancelled
+  progress          Float    @default(0) // 0-100 percentage
+
+  // What to restore
+  restoreTables     Json?    // Tables to restore as JSON array
+  restoreFiles      Json?    // Files to restore as JSON array
+  targetLocation    String?
+
+  // Timing
+  startedAt         DateTime?
+  completedAt       DateTime?
+  duration          Int?     // Duration in seconds
+
+  // Results
+  recordsRestored   Int?
+  filesRestored     Int?
+  errorMessage      String?
+  logs              String?
+  verificationStatus String? // verified, failed_verification, not_verified
+
+  createdBy         String
+  approvedBy        String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relations
+  backupJob         BackupJob @relation(fields: [backupJobId], references: [id])
+  creator           User @relation("RestorationJobCreator", fields: [createdBy], references: [id])
+  approver          User? @relation("RestorationJobApprover", fields: [approvedBy], references: [id])
+
+  @@index([backupJobId])
+  @@index([status])
+  @@index([type])
+  @@index([createdAt])
+  @@index([completedAt])
+  @@map("restoration_jobs")
+}
+
+// Enhanced System Logs
+model SystemLog {
+  id            String   @id @default(cuid())
+  level         String   // DEBUG, INFO, WARN, ERROR, FATAL
+  category      String   // AUTH, DATABASE, API, SYSTEM, SECURITY, etc.
+  subcategory   String?  // More specific category
+  message       String
+  details       Json?    // Additional log data
+  source        String?  // Source module or component
+
+  // Context information
+  userId        String?  // User who performed the action
+  sessionId     String?  // Session ID
+  requestId     String?  // Request ID for tracing
+  ipAddress     String?
+  userAgent     String?
+
+  // Performance data
+  duration      Int?     // Duration in milliseconds
+  memoryUsage   Int?     // Memory usage in bytes
+  cpuUsage      Float?   // CPU usage percentage
+
+  // Stack trace for errors
+  stackTrace    String?
+
+  // Metadata
+  tags          Json?     // Tags for filtering and searching as JSON array
+  metadata      Json?    // Additional metadata
+
+  createdAt     DateTime @default(now())
+
+  // Relations
+  user          User?    @relation("SystemLogUser", fields: [userId], references: [id])
+
+  @@index([level])
+  @@index([category])
+  @@index([userId])
+  @@index([createdAt])
+  @@index([sessionId])
+  @@index([requestId])
+  @@index([ipAddress])
+  @@index([tags])
+  @@map("system_logs")
+}
+
+// Performance Metrics
+model PerformanceMetric {
+  id            String   @id @default(cuid())
+  name          String   // CPU, Memory, Disk, Network, ResponseTime, etc.
+  category      String   // SYSTEM, DATABASE, API, APPLICATION
+  subcategory   String?  // More specific category
+  value         Float    // Metric value
+  unit          String   // ms, MB, %, requests/sec, etc.
+
+  // Context
+  source        String?  // Source of the metric
+  tags          Json?    // Tags for filtering (e.g., {endpoint: "/api/users"})
+
+  // Thresholds
+  warningThreshold Float?
+  criticalThreshold Float?
+
+  // Status based on thresholds
+  status        String   @default("normal") // normal, warning, critical
+
+  // Additional data
+  metadata      Json?
+
+  createdAt     DateTime @default(now())
+
+  @@index([name])
+  @@index([category])
+  @@index([status])
+  @@index([createdAt])
+  @@index([source])
+  @@map("performance_metrics")
+}
+
+// Holiday and Non-working Day Management
+model HolidayCalendar {
+  id            String   @id @default(cuid())
+  name          String
+  year          Int
+  country       String   @default("DO") // Default: Dominican Republic
+  region        String?  // State/province if applicable
+
+  isActive      Boolean  @default(true)
+  description   String?
+
+  createdBy     String
+  updatedBy     String?
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  creator       User     @relation("HolidayCalendarCreator", fields: [createdBy], references: [id])
+  updater       User?    @relation("HolidayCalendarUpdater", fields: [updatedBy], references: [id])
+
+  holidays      Holiday[]
+
+  @@unique([name, year, country, region])
+  @@index([year])
+  @@index([country])
+  @@index([region])
+  @@index([isActive])
+  @@map("holiday_calendars")
+}
+
+// Holiday Definition
+model Holiday {
+  id              String   @id @default(cuid())
+  calendarId      String
+  name            String
+  date            DateTime // Date of the holiday
+  type            String   // national, regional, religious, custom
+  isRecurring     Boolean  @default(false) // Recurs every year
+  recurringPattern String? // yearly, monthly, etc.
+  isActive        Boolean  @default(true)
+
+  // Work schedule impact
+  affectsWork     Boolean  @default(true)
+  workCompensation String?  // overtime, compensatory_off, none
+
+  description     String?
+
+  createdBy       String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  calendar        HolidayCalendar @relation(fields: [calendarId], references: [id], onDelete: Cascade)
+  creator         User @relation(fields: [createdBy], references: [id])
+
+  @@unique([calendarId, date])
+  @@index([calendarId])
+  @@index([date])
+  @@index([type])
+  @@index([isActive])
+  @@map("holidays")
+}
+
+// Stage Maximum Time Configuration
+model StageTimeConfiguration {
+  id              String   @id @default(cuid())
+  stage           CaseStage
+  maxTimeHours    Int      // Maximum time in hours
+  warningThresholdHours Int? // Warning threshold in hours
+  criticalThresholdHours Int? // Critical threshold in hours
+
+  // Business hours configuration
+  businessDaysOnly Boolean @default(true) // Only count business days
+  workHours       Json?    // Work hours definition {start: "09:00", end: "17:00"}
+
+  // Configuration details
+  departmentId    String?  // Department-specific configuration
+  isActive        Boolean  @default(true)
+
+  description     String?
+  createdBy       String
+  updatedBy       String?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  effectiveFrom   DateTime @default(now())
+  effectiveTo     DateTime?
+
+  // Relations
+  department      Department? @relation(fields: [departmentId], references: [id])
+  creator         User @relation("StageTimeConfigurationCreator", fields: [createdBy], references: [id])
+  updater         User?    @relation("StageTimeConfigurationUpdater", fields: [updatedBy], references: [id])
+
+  @@unique([stage, departmentId])
+  @@index([stage])
+  @@index([departmentId])
+  @@index([isActive])
+  @@index([effectiveFrom])
+  @@map("stage_time_configurations")
+}
+
+// Security Configuration
+model SecurityPolicy {
+  id              String   @id @default(cuid())
+  name            String
+  type            String   // password, session, authentication, access_control, encryption
+  category        String
+  description     String?
+
+  // Policy configuration
+  configuration   Json     // Policy-specific configuration
+  isEnabled       Boolean  @default(true)
+  isRequired      Boolean  @default(false)
+
+  // Enforcement
+  enforcementLevel String  @default("warn") // warn, enforce, strict
+
+  // Compliance
+  complianceStandard String? // ISO27001, GDPR, etc.
+
+  // Audit
+  lastAuditedAt   DateTime?
+  auditResults    Json?
+
+  createdBy       String
+  updatedBy       String?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  creator         User @relation("SecurityPolicyCreator", fields: [createdBy], references: [id])
+  updater         User?    @relation("SecurityPolicyUpdater", fields: [updatedBy], references: [id])
+
+  @@unique([name, type])
+  @@index([type])
+  @@index([category])
+  @@index([isEnabled])
+  @@index([enforcementLevel])
+  @@map("security_policies")
+}
+
+// Usage Statistics
+model UsageStatistics {
+  id              String   @id @default(cuid())
+  category        String   // users, cases, documents, api, system
+  subcategory     String?  // More specific category
+  metric          String   // daily_active_users, cases_created, api_calls, etc.
+  value           Float
+  unit            String   // count, bytes, milliseconds, etc.
+
+  // Context
+  period          String   // hourly, daily, weekly, monthly
+  periodStart     DateTime
+  periodEnd       DateTime
+
+  // Dimensions
+  departmentId    String?
+  userId          String?
+  role            String?
+
+  // Additional data
+  dimensions      Json?    // Additional dimensions for analysis
+  metadata        Json?
+
+  createdAt       DateTime @default(now())
+
+  // Relations
+  department      Department? @relation("UsageStatisticsDepartment", fields: [departmentId], references: [id])
+  user            User? @relation("UsageStatisticsUser", fields: [userId], references: [id])
+
+  @@index([category])
+  @@index([metric])
+  @@index([period])
+  @@index([periodStart])
+  @@index([periodEnd])
+  @@index([departmentId])
+  @@index([userId])
+  @@index([createdAt])
+  @@map("usage_statistics")
+}
+
+// Notification Channel Configuration
+model SystemNotificationChannel {
+  id              String   @id @default(cuid())
+  name            String
+  type            String   // email, sms, push, webhook, slack, teams
+  description     String?
+
+  // Channel configuration
+  configuration   Json     // Channel-specific configuration
+  isEnabled       Boolean  @default(true)
+  priority        Int      @default(0) // Higher number = higher priority
+
+  // Rate limiting
+  rateLimitPerHour Int?
+  rateLimitPerDay Int?
+
+  // Retry configuration
+  maxRetries      Int      @default(3)
+  retryDelay      Int      @default(300) // seconds
+
+  // Default settings
+  isDefault       Boolean  @default(false)
+
+  createdBy       String
+  updatedBy       String?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  creator         User @relation("SystemNotificationChannelCreator", fields: [createdBy], references: [id])
+  updater         User?    @relation("SystemNotificationChannelUpdater", fields: [updatedBy], references: [id])
+
+  @@unique([name, type])
+  @@index([type])
+  @@index([isEnabled])
+  @@index([priority])
+  @@map("system_notification_channels")
+}
+
+// System Health Check
+model SystemHealthCheck {
+  id              String   @id @default(cuid())
+  name            String
+  category        String   // database, external_service, system_resource, application
+  status          String   // healthy, warning, critical, unknown
+
+  // Check details
+  endpoint        String?  // URL or resource being checked
+  method          String?  // HTTP method or check type
+  expectedStatus  Int?     // Expected HTTP status
+  timeout         Int      @default(30000) // Timeout in milliseconds
+
+  // Results
+  responseTime    Int?     // Response time in milliseconds
+  statusCode      Int?     // Actual status code
+  errorMessage    String?
+  details         Json?    // Additional check details
+
+  // Configuration
+  checkInterval   Int      @default(300) // Check interval in seconds
+  isActive        Boolean  @default(true)
+
+  // Alerting
+  alertOnFailure  Boolean  @default(true)
+  alertChannels   Json?    // Channel IDs to alert as JSON array
+
+  createdBy       String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  lastCheckedAt   DateTime?
+
+  // Relations
+  creator         User @relation("SystemHealthCheckCreator", fields: [createdBy], references: [id])
+
+  @@index([category])
+  @@index([status])
+  @@index([isActive])
+  @@index([lastCheckedAt])
+  @@map("system_health_checks")
 }

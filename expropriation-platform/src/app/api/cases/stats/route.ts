@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
       deletedAt: null
     }
 
-    if (role !== 'SUPER_ADMIN') {
+    if (role !== 'super_admin') {
       // Non-super admins can only see stats from their department or assigned to them
       where.AND = [
         {
@@ -84,7 +84,7 @@ export async function GET(request: NextRequest) {
 
     // Get cases by department (only for super admins)
     let departmentStats = []
-    if (role === 'SUPER_ADMIN') {
+    if (role === 'super_admin') {
       departmentStats = await prisma.case.groupBy({
         by: ['departmentId'],
         where,
