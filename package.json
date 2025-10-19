@@ -1,6 +1,0 @@
-{
-  "devDependencies": {
-    "@types/archiver": "^6.0.3",
-    "@types/lodash-es": "^4.17.12"
-  }
-}

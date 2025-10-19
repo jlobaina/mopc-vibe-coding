@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { ProtectedRoute } from '@/components/auth/protected-route';
 import { useRouter } from 'next/navigation';
@@ -9,25 +10,27 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import {
   Building2,
-  Users,
+  BarChart3,
   FileText,
   Settings,
   LogOut,
-  User,
-  BarChart3,
-  AlertTriangle,
-  Clock,
   TrendingUp,
-  Activity
+  AlertTriangle,
+  Download,
+  Calendar,
+  Filter
 } from 'lucide-react';
 import { DashboardStats } from '@/components/dashboard/dashboard-stats';
 import { DashboardCharts } from '@/components/dashboard/dashboard-charts';
 import { DashboardCases } from '@/components/dashboard/dashboard-cases';
 import { DashboardAlerts } from '@/components/dashboard/dashboard-alerts';
+import { DateFilter, useDateFilter } from '@/components/dashboard/date-filter';
+import { ExportTools } from '@/components/dashboard/export-tools';
 
-export default function DashboardPage() {
-  const { user, signOut, isSuperAdmin, isDepartmentAdmin, isAnalyst, isSupervisor } = useAuth();
+export default function ReportsPage() {
+  const { user, signOut } = useAuth();
   const router = useRouter();
+  const { dateRange, updateDateRange, updatePeriod, getApiParams } = useDateFilter();
 
   return (
     <ProtectedRoute>
@@ -65,15 +68,15 @@ export default function DashboardPage() {
 
         {/* Main Content */}
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {/* Welcome Section */}
+          {/* Page Header */}
           <div className="mb-8">
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                  Bienvenido, {user?.firstName} {user?.lastName}
+                  Reportes y Análisis
                 </h2>
                 <p className="text-gray-600">
-                  Panel principal del Sistema de Gestión de Casos de Expropiación
+                  Sistema integral de generación de reportes y análisis de datos
                 </p>
               </div>
               <div className="flex items-center space-x-2">
@@ -87,64 +90,22 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Quick Actions */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => router.push('/cases')}>
+          {/* Date Filter */}
+          <div className="mb-8">
+            <Card>
               <CardContent className="p-4">
-                <div className="flex items-center space-x-3">
-                  <FileText className="h-8 w-8 text-blue-600" />
-                  <div>
-                    <h3 className="font-semibold text-sm">Casos</h3>
-                    <p className="text-xs text-gray-500">Gestión de casos</p>
-                  </div>
-                </div>
+                <DateFilter
+                  onDateRangeChange={updateDateRange}
+                  onPeriodChange={updatePeriod}
+                  className="w-full"
+                />
               </CardContent>
             </Card>
-
-            <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => router.push('/reports')}>
-              <CardContent className="p-4">
-                <div className="flex items-center space-x-3">
-                  <BarChart3 className="h-8 w-8 text-green-600" />
-                  <div>
-                    <h3 className="font-semibold text-sm">Reportes</h3>
-                    <p className="text-xs text-gray-500">Análisis y estadísticas</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {(isSuperAdmin || isDepartmentAdmin) && (
-              <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => router.push('/users')}>
-                <CardContent className="p-4">
-                  <div className="flex items-center space-x-3">
-                    <Users className="h-8 w-8 text-purple-600" />
-                    <div>
-                      <h3 className="font-semibold text-sm">Usuarios</h3>
-                      <p className="text-xs text-gray-500">Gestión de usuarios</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {(isAnalyst || isDepartmentAdmin || isSuperAdmin) && (
-              <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => router.push('/cases?action=create')}>
-                <CardContent className="p-4">
-                  <div className="flex items-center space-x-3">
-                    <Activity className="h-8 w-8 text-orange-600" />
-                    <div>
-                      <h3 className="font-semibold text-sm">Nuevo Caso</h3>
-                      <p className="text-xs text-gray-500">Crear caso</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
           </div>
 
-          {/* Dashboard Tabs */}
+          {/* Reports Tabs */}
           <Tabs defaultValue="overview" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:grid-cols-4">
+            <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:grid-cols-5">
               <TabsTrigger value="overview" className="flex items-center space-x-2">
                 <BarChart3 className="h-4 w-4" />
                 <span className="hidden sm:inline">Resumen</span>
@@ -161,17 +122,45 @@ export default function DashboardPage() {
                 <AlertTriangle className="h-4 w-4" />
                 <span className="hidden sm:inline">Alertas</span>
               </TabsTrigger>
+              <TabsTrigger value="export" className="flex items-center space-x-2">
+                <Download className="h-4 w-4" />
+                <span className="hidden sm:inline">Exportar</span>
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="overview" className="space-y-6">
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  Resumen General del Período
+                </h3>
+                <p className="text-sm text-gray-600">
+                  Estadísticas y métricas clave para el período seleccionado
+                </p>
+              </div>
               <DashboardStats departmentId={user?.departmentId} />
             </TabsContent>
 
             <TabsContent value="analytics" className="space-y-6">
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  Análisis Detallado
+                </h3>
+                <p className="text-sm text-gray-600">
+                  Visualizaciones interactivas y tendencias
+                </p>
+              </div>
               <DashboardCharts departmentId={user?.departmentId} />
             </TabsContent>
 
             <TabsContent value="cases" className="space-y-6">
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  Análisis de Casos
+                </h3>
+                <p className="text-sm text-gray-600">
+                  Listado detallado y estado de casos
+                </p>
+              </div>
               <DashboardCases
                 departmentId={user?.departmentId}
                 userId={user?.id}
@@ -179,12 +168,63 @@ export default function DashboardPage() {
             </TabsContent>
 
             <TabsContent value="alerts" className="space-y-6">
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  Sistema de Alertas
+                </h3>
+                <p className="text-sm text-gray-600">
+                  Alertas críticas y requerimientos de atención
+                </p>
+              </div>
               <DashboardAlerts
                 departmentId={user?.departmentId}
                 userId={user?.id}
               />
             </TabsContent>
+
+            <TabsContent value="export" className="space-y-6">
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  Herramientas de Exportación
+                </h3>
+                <p className="text-sm text-gray-600">
+                  Genere reportes personalizados en PDF y Excel
+                </p>
+              </div>
+              <ExportTools departmentId={user?.departmentId} />
+            </TabsContent>
           </Tabs>
+
+          {/* Quick Actions Footer */}
+          <div className="mt-8 pt-8 border-t">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <Button
+                  variant="outline"
+                  onClick={() => router.push('/dashboard')}
+                >
+                  <BarChart3 className="h-4 w-4 mr-2" />
+                  Volver al Dashboard
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => router.push('/cases')}
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  Ver Todos los Casos
+                </Button>
+              </div>
+              <div className="text-sm text-gray-500">
+                Última actualización: {new Date().toLocaleDateString('es-ES', {
+                  day: 'numeric',
+                  month: 'long',
+                  year: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                })}
+              </div>
+            </div>
+          </div>
         </main>
       </div>
     </ProtectedRoute>
