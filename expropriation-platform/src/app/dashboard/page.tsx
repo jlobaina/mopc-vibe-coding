@@ -25,7 +25,8 @@ import {
   TrendingUp,
   Activity,
   HelpCircle,
-  Keyboard
+  Keyboard,
+  Calendar
 } from 'lucide-react';
 import { DashboardStats } from '@/components/dashboard/dashboard-stats';
 import { DashboardCharts } from '@/components/dashboard/dashboard-charts';
@@ -54,6 +55,10 @@ export default function DashboardPage() {
     {
       ...commonShortcuts.goToReports,
       action: () => router.push('/reports'),
+    },
+    {
+      ...commonShortcuts.goToMeetings,
+      action: () => router.push('/meetings'),
     },
     {
       ...commonShortcuts.createNew,
@@ -173,6 +178,25 @@ export default function DashboardPage() {
                       <div>
                         <h3 className="font-semibold text-sm">Casos</h3>
                         <p className="text-xs text-muted-foreground">Gestión de casos</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card
+                  className="hover:shadow-md transition-all duration-200 cursor-pointer group focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+                  onClick={() => router.push('/meetings')}
+                  onKeyDown={(e) => e.key === 'Enter' && router.push('/meetings')}
+                  tabIndex={0}
+                  role="button"
+                  aria-label="Ir a reuniones"
+                >
+                  <CardContent className="p-4">
+                    <div className="flex items-center space-x-3">
+                      <Calendar className="h-8 w-8 text-purple-600 group-hover:scale-110 transition-transform" />
+                      <div>
+                        <h3 className="font-semibold text-sm">Reuniones</h3>
+                        <p className="text-xs text-muted-foreground">Gestión de reuniones</p>
                       </div>
                     </div>
                   </CardContent>

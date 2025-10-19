@@ -75,6 +75,11 @@ export const commonShortcuts = {
     altKey: true,
     description: 'Ir a reportes',
   },
+  goToMeetings: {
+    key: 'm',
+    altKey: true,
+    description: 'Ir a reuniones',
+  },
 
   // Actions
   createNew: {

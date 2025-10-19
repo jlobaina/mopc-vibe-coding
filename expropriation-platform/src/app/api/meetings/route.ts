@@ -52,24 +52,34 @@ export async function GET(request: NextRequest) {
       ];
     }
 
-    // Get user's department for filtering
+    // Get user's department and role for filtering
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
-      include: { department: true },
+      include: {
+        department: true,
+        role: true,
+      },
     });
 
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
+    if (!user.role) {
+      return NextResponse.json({ error: "User role not found" }, { status: 404 });
+    }
+
     // Filter meetings based on user role and participation
     const userRole = user.role.name;
-    if (userRole !== "SUPER_ADMIN" && userRole !== "DEPARTMENT_ADMIN") {
+    if (!userRole) {
+      return NextResponse.json({ error: "User role name is missing" }, { status: 400 });
+    }
+
+    if (userRole.toUpperCase() !== "SUPER_ADMIN" && userRole.toUpperCase() !== "DEPARTMENT_ADMIN") {
       where.OR = [
         { organizerId: session.user.id },
         { chairId: session.user.id },
         { participants: { some: { userId: session.user.id } } },
-        { departmentId: user.departmentId },
       ];
     }
 
@@ -82,9 +92,6 @@ export async function GET(request: NextRequest) {
           },
           chair: {
             select: { id: true, firstName: true, lastName: true, email: true },
-          },
-          department: {
-            select: { id: true, name: true, code: true },
           },
           participants: {
             include: {
@@ -203,6 +210,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
+    if (!user.role) {
+      return NextResponse.json({ error: "User role not found" }, { status: 404 });
+    }
+
+    if (!user.department) {
+      return NextResponse.json({ error: "User department not found" }, { status: 404 });
+    }
+
     // Check for scheduling conflicts
     const conflicts = await checkMeetingConflicts(
       validatedData.scheduledStart,
@@ -226,8 +241,7 @@ export async function POST(request: NextRequest) {
       data: {
         ...validatedData,
         organizerId: session.user.id,
-        departmentId: user.departmentId,
-        plannedDuration: Math.round(
+                plannedDuration: Math.round(
           (validatedData.scheduledEnd.getTime() - validatedData.scheduledStart.getTime()) / (1000 * 60)
         ),
         metadata: validatedData.metadata || {},
@@ -240,9 +254,6 @@ export async function POST(request: NextRequest) {
         },
         chair: {
           select: { id: true, firstName: true, lastName: true, email: true },
-        },
-        department: {
-          select: { id: true, name: true, code: true },
         },
         _count: {
           select: {
