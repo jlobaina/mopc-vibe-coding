@@ -68,6 +68,8 @@ export function KeyboardShortcutsProvider({
 }: KeyboardShortcutsProviderProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isMac, setIsMac] = useState(false);
+  const [isClient, setIsClient] = useState(false);
   const router = useRouter();
 
   // Default shortcuts
@@ -124,7 +126,11 @@ export function KeyboardShortcutsProvider({
       altKey: true,
       description: 'Navegar atrás',
       icon: <ArrowLeft className="h-4 w-4" />,
-      action: () => window.history.back(),
+      action: () => {
+        if (typeof window !== 'undefined') {
+          window.history.back();
+        }
+      },
       category: 'navigation',
       global: true,
     },
@@ -134,7 +140,11 @@ export function KeyboardShortcutsProvider({
       altKey: true,
       description: 'Navegar adelante',
       icon: <ArrowRight className="h-4 w-4" />,
-      action: () => window.history.forward(),
+      action: () => {
+        if (typeof window !== 'undefined') {
+          window.history.forward();
+        }
+      },
       category: 'navigation',
       global: true,
     },
@@ -316,6 +326,12 @@ export function KeyboardShortcutsProvider({
     [shortcuts]
   );
 
+  // Detect platform on client-side only
+  useEffect(() => {
+    setIsClient(true);
+    setIsMac(window.navigator.platform.includes('Mac'));
+  }, []);
+
   useEffect(() => {
     document.addEventListener('keydown', handleKeyDown);
     return () => {
@@ -348,7 +364,7 @@ export function KeyboardShortcutsProvider({
 
   const formatKeybinding = (shortcut: KeyboardShortcut) => {
     const parts = [];
-    if (shortcut.ctrlKey) parts.push(window.navigator.platform.includes('Mac') ? '⌘' : 'Ctrl');
+    if (shortcut.ctrlKey) parts.push(isMac ? '⌘' : 'Ctrl');
     if (shortcut.altKey) parts.push('Alt');
     if (shortcut.shiftKey) parts.push('Shift');
     if (shortcut.metaKey && !shortcut.ctrlKey) parts.push('⌘');
