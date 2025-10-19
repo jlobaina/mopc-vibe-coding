@@ -125,6 +125,212 @@ enum PermissionType {
   VIEW_REPORTS
   APPROVE_DECISIONS
   COORDINATE_MEETINGS
+  VALIDATE_CHECKLISTS
+  SIGN_DOCUMENTS
+  APPROVE_WORKFLOWS
+  MANAGE_REVIEWS
+  CREATE_OBSERVATIONS
+  VIEW_RISK_ASSESSMENT
+  // Document management permissions
+  UPLOAD_DOCUMENTS
+  DOWNLOAD_DOCUMENTS
+  VIEW_DOCUMENTS
+  EDIT_DOCUMENTS
+  DELETE_DOCUMENTS
+  MANAGE_DOCUMENT_TEMPLATES
+  MANAGE_DOCUMENT_CATEGORIES
+  APPROVE_DOCUMENTS
+  SHARE_DOCUMENTS
+  VERSION_DOCUMENTS
+  PREVIEW_DOCUMENTS
+  SEARCH_DOCUMENTS
+  BULK_DOWNLOAD_DOCUMENTS
+  MANAGE_DOCUMENT_PERMISSIONS
+  SIGN_DOCUMENTS_DIGITAL
+  AUDIT_DOCUMENTS
+}
+
+// Validation System Enums
+enum ChecklistItemType {
+  DOCUMENT
+  ACTION
+  VERIFICATION
+  APPROVAL
+  INSPECTION
+  SIGNATURE
+  PAYMENT
+  NOTIFICATION
+}
+
+enum SignatureType {
+  APPROVAL
+  REJECTION
+  REVIEW
+  WITNESS
+  CERTIFICATION
+  VALIDATION
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CONDITIONAL
+  DELEGATED
+  ESCALATED
+}
+
+enum ReviewType {
+  INTERNAL_CONTROL
+  TECHNICAL_ANALYSIS
+  LEGAL_REVIEW
+  FINANCIAL_REVIEW
+  SUPERVISORY_REVIEW
+  QUALITY_ASSURANCE
+}
+
+enum ObservationPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+  BLOCKING
+}
+
+enum ObservationStatus {
+  OPEN
+  IN_PROGRESS
+  RESPONDED
+  RESOLVED
+  CLOSED
+  ESCALATED
+}
+
+enum ValidationRuleType {
+  REQUIRED_FIELD
+  DOCUMENT_COMPLETENESS
+  BUSINESS_RULE
+  REGULATORY_COMPLIANCE
+  TIME_LIMIT
+  FINANCIAL_THRESHOLD
+  APPROVAL_MATRIX
+}
+
+enum RiskLevel {
+  VERY_LOW
+  LOW
+  MEDIUM
+  HIGH
+  VERY_HIGH
+  CRITICAL
+}
+
+enum AlertType {
+  DEADLINE_APPROACHING
+  DEADLINE_EXCEEDED
+  DOCUMENT_MISSING
+  VALIDATION_FAILED
+  APPROVAL_REQUIRED
+  RISK_IDENTIFIED
+  OBSERVATION_OVERDUE
+  ESCALATION_REQUIRED
+}
+
+// Document Management Enums
+enum DocumentType {
+  LEGAL_DOCUMENT
+  TECHNICAL_REPORT
+  FINANCIAL_RECORD
+  PROPERTY_DOCUMENT
+  IDENTIFICATION_DOCUMENT
+  NOTIFICATION_DOCUMENT
+  CONTRACT_DOCUMENT
+  PHOTOGRAPH
+  VIDEO
+  AUDIO
+  SPREADSHEET
+  PRESENTATION
+  OTHER
+}
+
+enum DocumentStatus {
+  DRAFT
+  PENDING_REVIEW
+  APPROVED
+  REJECTED
+  ARCHIVED
+  EXPIRED
+  UNDER_REVIEW
+  FINAL
+  SUPERSEDED
+}
+
+enum DocumentCategory {
+  LEGAL
+  TECHNICAL
+  FINANCIAL
+  ADMINISTRATIVE
+  COMMUNICATION
+  PHOTOGRAPHIC
+  MULTIMEDIA
+  TEMPLATE
+  REFERENCE
+  CORRESPONDENCE
+}
+
+enum DocumentStorageType {
+  LOCAL
+  CLOUD
+  HYBRID
+  BACKUP
+  ARCHIVE
+}
+
+enum DocumentSecurityLevel {
+  PUBLIC
+  INTERNAL
+  CONFIDENTIAL
+  SECRET
+  TOP_SECRET
+}
+
+enum DocumentActionType {
+  UPLOADED
+  DOWNLOADED
+  VIEWED
+  EDITED
+  DELETED
+  ARCHIVED
+  RESTORED
+  SHARED
+  SIGNED
+  APPROVED
+  REJECTED
+  VERSIONED
+  COPIED
+  MOVED
+  TAGGED
+  CATEGORIZED
+}
+
+enum TemplateType {
+  LEGAL_TEMPLATE
+  FORM_TEMPLATE
+  REPORT_TEMPLATE
+  LETTER_TEMPLATE
+  CONTRACT_TEMPLATE
+  MEMO_TEMPLATE
+  CERTIFICATE_TEMPLATE
+  NOTIFICATION_TEMPLATE
+}
+
+enum SignatureStatus {
+  PENDING
+  SIGNED
+  REJECTED
+  EXPIRED
+  REVOKED
+  INVALID
 }
 
 model Department {
@@ -166,6 +372,7 @@ model Department {
   departmentPermissions DepartmentPermission[]
   departmentTransfers    DepartmentTransfer[] @relation("SourceDepartment")
   destinationTransfers   DepartmentTransfer[] @relation("DestinationDepartment")
+  documentPermissions DocumentPermission[] @relation("DocumentDepartmentPermissions")
 
   @@index([parentId])
   @@index([isActive])
@@ -221,6 +428,7 @@ model Role {
   // Relations
   users           User[]
   rolePermissions RolePermission[]
+  documentPermissions DocumentPermission[] @relation("DocumentRolePermissions")
 
   @@map("roles")
 }
@@ -311,6 +519,35 @@ model User {
   headOfDepartments Department[] @relation("DepartmentHead")
   departmentTransfers DepartmentTransfer[]
   receivedStageNotifications StageNotification[]
+
+  // Validation system relations
+  digitalSignatures DigitalSignature[]
+  initiatedWorkflows ApprovalWorkflow[] @relation("ApprovalInitiator")
+  completedWorkflows ApprovalWorkflow[] @relation("ApprovalCompleter")
+  approvals Approval[]
+  timeTracking TimeTracking[]
+  assignedReviews ReviewAssignment[] @relation("ReviewAssignee")
+  createdReviews ReviewAssignment[] @relation("ReviewAssigner")
+  reviewSubmissions Review[] @relation("ReviewReviewer")
+  createdObservations Observation[] @relation("ObservationObserver")
+  assignedObservations Observation[] @relation("ObservationAssignee")
+  observationResponses ObservationResponse[] @relation("ObservationResponder")
+  acknowledgedRiskAlerts RiskAlert[] @relation("RiskAlertAcknowledger")
+  resolvedRiskAlerts RiskAlert[] @relation("RiskAlertResolver")
+  riskAssessments RiskAssessment[]
+
+  // Document management relations
+  documentVersions DocumentVersion[] @relation("DocumentVersionCreator")
+  templateVersions DocumentTemplateVersion[]
+  documentPermissions DocumentPermission[] @relation("DocumentUserPermissions")
+  documentHistories DocumentHistory[] @relation("DocumentHistoryUser")
+  documentActions DocumentAction[] @relation("DocumentActionUser")
+  documentShares DocumentShare[]
+  initiatedDocumentWorkflows DocumentWorkflow[] @relation("DocumentWorkflowInitiator")
+  completedDocumentWorkflows DocumentWorkflow[] @relation("DocumentWorkflowCompleter")
+  documentComments DocumentComment[] @relation("DocumentCommentAuthor")
+  resolvedDocumentComments DocumentComment[] @relation("DocumentCommentResolver")
+  createdTemplates DocumentTemplate[] @relation("TemplateCreator")
 
   // NextAuth.js relations
   accounts      Account[]
@@ -466,6 +703,14 @@ model Case {
   stageProgressions StageProgression[]
   stageNotifications StageNotification[]
 
+  // Validation system relations
+  approvalWorkflows ApprovalWorkflow[]
+  timeTracking TimeTracking[]
+  reviewAssignments ReviewAssignment[]
+  observations Observation[]
+  validationExecutions ValidationExecution[]
+  riskAssessments RiskAssessment[]
+
   @@index([fileNumber])
   @@index([currentStage])
   @@index([priority])
@@ -484,32 +729,110 @@ model Case {
 }
 
 model Document {
-  id          String  @id @default(cuid())
+  id          String                @id @default(cuid())
   title       String
   description String?
   fileName    String
+  originalFileName String?
   filePath    String
   fileSize    Int
   mimeType    String
+  fileHash    String? // MD5/SHA hash for integrity verification
+
+  // Document categorization
+  documentType     DocumentType @default(OTHER)
+  category         DocumentCategory @default(ADMINISTRATIVE)
+  status           DocumentStatus @default(DRAFT)
+  securityLevel    DocumentSecurityLevel @default(INTERNAL)
+
+  // Version control
   version     Int     @default(1)
+  isLatest    Boolean @default(true)
+  isDraft     Boolean @default(true)
+
+  // Access control
   isPublic    Boolean @default(false)
+  isEncrypted Boolean @default(false)
+  encryptionKey String? // Encrypted storage key
+
+  // Metadata
   tags        String? // Comma-separated tags
+  metadata    Json?   // Additional metadata as JSON
+  customFields Json?  // Custom fields specific to document type
+
+  // Document lifecycle
+  expiresAt   DateTime?
+  archivedAt  DateTime?
+  archivedBy  String?
+  retentionPeriod Int? // Retention period in days
+
+  // Content indexing for search
+  contentText String? // Extracted text content for full-text search
+  isIndexed   Boolean @default(false)
+  indexedAt   DateTime?
+
+  // Thumbnail and preview
+  thumbnailPath String? // Path to generated thumbnail
+  previewGenerated Boolean @default(false)
+
+  // Storage information
+  storageType DocumentStorageType @default(LOCAL)
+  storageLocation String? // Physical storage location identifier
+  backupLocation String? // Backup storage location
+
+  // Audit and tracking
+  downloadCount Int @default(0)
+  viewCount Int @default(0)
+  lastAccessedAt DateTime?
+  lastAccessedBy String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   // Relations
-  caseId String
-  case   Case   @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  caseId String?
+  case   Case?   @relation(fields: [caseId], references: [id], onDelete: Cascade)
 
   uploadedById String
   uploadedBy   User   @relation(fields: [uploadedById], references: [id])
 
-  // Version history
+  // Version control
   parentId String?
   parent   Document?  @relation("DocumentVersion", fields: [parentId], references: [id])
   children Document[] @relation("DocumentVersion")
 
+  // Template relationship
+  templateId String?
+  template DocumentTemplate? @relation("DocumentFromTemplate", fields: [templateId], references: [id])
+
+  // Category relationship
+  categoryId String?
+  categoryRef DocumentCategoryRef? @relation("CategoryDocuments", fields: [categoryId], references: [id])
+
+  // Related documents and permissions
+  permissions DocumentPermission[]
+  versions DocumentVersion[]
+  history DocumentHistory[]
+  signatures DigitalSignature[] @relation("DocumentSignatures")
+  tagsRelations DocumentTag[]
+  actions DocumentAction[]
+  shares DocumentShare[]
+  workflows DocumentWorkflow[]
+  comments DocumentComment[]
+
+  @@index([caseId])
+  @@index([uploadedById])
+  @@index([documentType])
+  @@index([category])
+  @@index([status])
+  @@index([securityLevel])
+  @@index([version])
+  @@index([isLatest])
+  @@index([isPublic])
+  @@index([createdAt])
+  @@index([expiresAt])
+  @@index([fileHash])
+  @@index([contentText])
   @@map("documents")
 }
 
@@ -680,6 +1003,460 @@ model VerificationToken {
   @@map("verification_tokens")
 }
 
+// ========================================
+// DOCUMENT MANAGEMENT MODELS
+// ========================================
+
+// Document Version Model (enhanced version control)
+model DocumentVersion {
+  id          String   @id @default(cuid())
+  documentId  String
+  version     Int
+  title       String
+  description String?
+  fileName    String
+  filePath    String
+  fileSize    Int
+  mimeType    String
+  fileHash    String?
+
+  // Version metadata
+  changeSummary String? // Summary of changes in this version
+  isMajorVersion Boolean @default(false) // Major vs minor version
+  isPublished    Boolean @default(false) // Published/active version
+  isActive       Boolean @default(true) // Currently active version
+
+  // Version control data
+  diffData    Json?   // Difference data from previous version
+  checksum    String? // File checksum for integrity
+  compressedSize Int? // Size after compression
+
+  // Creation metadata
+  createdBy   String
+  createdAt   DateTime @default(now())
+  publishedAt DateTime?
+
+  // Relations
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  creator  User    @relation("DocumentVersionCreator", fields: [createdBy], references: [id])
+
+  // Version relationships
+  previousVersionId String?
+  previousVersion DocumentVersion? @relation("DocumentVersionHistory", fields: [previousVersionId], references: [id])
+  nextVersions DocumentVersion[] @relation("DocumentVersionHistory")
+
+  @@unique([documentId, version])
+  @@index([documentId])
+  @@index([version])
+  @@index([isActive])
+  @@index([isPublished])
+  @@index([createdBy])
+  @@index([createdAt])
+  @@map("document_versions")
+}
+
+// Document Category Reference Model
+model DocumentCategoryRef {
+  id          String           @id @default(cuid())
+  name        String           @unique
+  description String?
+  category    DocumentCategory
+  color       String?          // Hex color for UI
+  icon        String?          // Icon identifier
+  isActive    Boolean          @default(true)
+  parentId    String?          // For hierarchical categories
+  parent      DocumentCategoryRef? @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children    DocumentCategoryRef[] @relation("CategoryHierarchy")
+
+  // Category configuration
+  allowedTypes Json?           // Allowed document types for this category
+  defaultSecurity DocumentSecurityLevel @default(INTERNAL)
+  retentionPeriod Int?         // Default retention period in days
+  autoArchiveRules Json?       // Automatic archiving rules
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  documents Document[] @relation("CategoryDocuments")
+
+  @@index([category])
+  @@index([isActive])
+  @@index([parentId])
+  @@map("document_category_refs")
+}
+
+// Document Template Model
+model DocumentTemplate {
+  id          String       @id @default(cuid())
+  name        String
+  description String?
+  templateType TemplateType
+  category    DocumentCategory @default(ADMINISTRATIVE)
+
+  // Template content
+  content     String       // Template content with placeholders
+  variables   Json?        // Template variables definition
+  placeholders Json?       // Placeholders that can be filled
+  layout      Json?        // Layout configuration
+
+  // Template metadata
+  version     Int          @default(1)
+  isActive    Boolean      @default(true)
+  isDefault   Boolean      @default(false)
+
+  // Usage statistics
+  usageCount  Int          @default(0)
+  lastUsedAt  DateTime?
+
+  // Template configuration
+  securityLevel DocumentSecurityLevel @default(INTERNAL)
+  allowedRoles Json?       // Roles that can use this template
+  requiredFields Json?     // Required fields in this template
+
+  // Approval workflow
+  requiresApproval Boolean @default(false)
+  approvedBy  String?
+  approvedAt  DateTime?
+
+  // Relations
+  documents Document[] @relation("DocumentFromTemplate")
+  versions DocumentTemplateVersion[]
+
+  createdBy String
+  creator  User @relation("TemplateCreator", fields: [createdBy], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([templateType])
+  @@index([category])
+  @@index([isActive])
+  @@index([isDefault])
+  @@index([createdBy])
+  @@map("document_templates")
+}
+
+// Document Template Version Model
+model DocumentTemplateVersion {
+  id        String   @id @default(cuid())
+  templateId String
+  version   Int
+  content   String
+  changeLog String?
+
+  createdBy String
+  createdAt DateTime @default(now())
+
+  // Relations
+  template DocumentTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  creator  User @relation(fields: [createdBy], references: [id])
+
+  @@unique([templateId, version])
+  @@index([templateId])
+  @@index([version])
+  @@map("document_template_versions")
+}
+
+// Document Permission Model
+model DocumentPermission {
+  id         String @id @default(cuid())
+  documentId String
+  userId     String? // Individual user permission
+  roleId     String? // Role-based permission
+  departmentId String? // Department-based permission
+
+  // Permission details
+  canView    Boolean @default(false)
+  canEdit    Boolean @default(false)
+  canDelete  Boolean @default(false)
+  canDownload Boolean @default(false)
+  canShare   Boolean @default(false)
+  canSign    Boolean @default(false)
+  canApprove Boolean @default(false)
+
+  // Permission constraints
+  expiresAt  DateTime?
+  accessCount Int      @default(0)
+  lastAccessed DateTime?
+
+  // Permission metadata
+  grantedBy  String?
+  grantedAt  DateTime @default(now())
+  reason     String?
+
+  isActive   Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  user User? @relation("DocumentUserPermissions", fields: [userId], references: [id])
+  role Role? @relation("DocumentRolePermissions", fields: [roleId], references: [id])
+  department Department? @relation("DocumentDepartmentPermissions", fields: [departmentId], references: [id])
+
+  @@unique([documentId, userId, roleId, departmentId])
+  @@index([documentId])
+  @@index([userId])
+  @@index([roleId])
+  @@index([departmentId])
+  @@index([isActive])
+  @@index([expiresAt])
+  @@map("document_permissions")
+}
+
+// Document History Model (audit trail)
+model DocumentHistory {
+  id          String           @id @default(cuid())
+  documentId  String
+  action      DocumentActionType
+
+  // Change details
+  field       String?          // Which field was changed
+  previousValue String?        // Previous value (JSON)
+  newValue    String?          // New value (JSON)
+  changeReason String?         // Reason for the change
+
+  // Action metadata
+  description String?          // Detailed description of action
+  metadata    Json?            // Additional action metadata
+
+  // User and session information
+  userId      String
+  ipAddress   String?
+  userAgent   String?
+  sessionId   String?
+
+  // File operation details
+  fileSize    Int?             // File size if applicable
+  fileName    String?          // File name if applicable
+  filePath    String?          // File path if applicable
+
+  createdAt DateTime @default(now())
+
+  // Relations
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  user User @relation("DocumentHistoryUser", fields: [userId], references: [id])
+
+  @@index([documentId])
+  @@index([action])
+  @@index([userId])
+  @@index([createdAt])
+  @@index([field])
+  @@map("document_histories")
+}
+
+// Document Tag Model
+model DocumentTag {
+  id         String @id @default(cuid())
+  documentId String
+  tag        String
+  color      String? // Hex color for UI
+  isActive   Boolean @default(true)
+
+  createdAt DateTime @default(now())
+
+  // Relations
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@unique([documentId, tag])
+  @@index([documentId])
+  @@index([tag])
+  @@index([isActive])
+  @@map("document_tags")
+}
+
+// Document Action Model (user interactions)
+model DocumentAction {
+  id         String           @id @default(cuid())
+  documentId String
+  action     DocumentActionType
+
+  // Action details
+  metadata   Json?            // Action-specific metadata
+  duration   Int?             // Action duration in milliseconds
+
+  // User information
+  userId     String
+  ipAddress  String?
+  userAgent  String?
+
+  // Location information
+  geolocation Json?           // GPS coordinates if available
+
+  createdAt DateTime @default(now())
+
+  // Relations
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  user User @relation("DocumentActionUser", fields: [userId], references: [id])
+
+  @@index([documentId])
+  @@index([action])
+  @@index([userId])
+  @@index([createdAt])
+  @@map("document_actions")
+}
+
+// Document Sharing Model
+model DocumentShare {
+  id         String   @id @default(cuid())
+  documentId String
+  shareToken String   @unique
+
+  // Share configuration
+  shareType  String   // LINK, EMAIL, DIRECT
+  permissions Json     // JSON array of permissions
+
+  // Access control
+  password   String?  // Optional password protection
+  maxViews   Int?     // Maximum view count
+  currentViews Int    @default(0)
+  expiresAt  DateTime?
+
+  // Share metadata
+  sharedBy   String
+  sharedWith String?  // Email or user ID if shared directly
+  message    String?  // Personal message with share
+
+  isActive   Boolean @default(true)
+  createdAt DateTime @default(now())
+  lastAccessed DateTime?
+
+  // Relations
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  sharer User @relation(fields: [sharedBy], references: [id])
+
+  @@index([documentId])
+  @@index([shareToken])
+  @@index([sharedBy])
+  @@index([expiresAt])
+  @@index([isActive])
+  @@map("document_shares")
+}
+
+// Document Workflow Model (approval workflows)
+model DocumentWorkflow {
+  id         String           @id @default(cuid())
+  documentId String
+  workflowType String         // APPROVAL, REVIEW, SIGNATURE
+
+  // Workflow configuration
+  title      String
+  description String?
+  steps      Json             // Workflow steps configuration
+  currentStep Int            @default(0)
+
+  // Workflow status
+  status     String           @default("PENDING") // PENDING, IN_PROGRESS, COMPLETED, CANCELLED
+  initiatedBy String
+  initiatedAt DateTime @default(now())
+  completedAt DateTime?
+  completedBy String?
+
+  // Workflow data
+  formData   Json?            // Form data collected during workflow
+  decisions  Json?            // Workflow decisions
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  initiator User @relation("DocumentWorkflowInitiator", fields: [initiatedBy], references: [id])
+  completer User? @relation("DocumentWorkflowCompleter", fields: [completedBy], references: [id])
+
+  stepsAssignments DocumentWorkflowStep[]
+
+  @@index([documentId])
+  @@index([workflowType])
+  @@index([status])
+  @@index([initiatedBy])
+  @@index([createdAt])
+  @@map("document_workflows")
+}
+
+// Document Workflow Step Model
+model DocumentWorkflowStep {
+  id         String   @id @default(cuid())
+  workflowId String
+  stepOrder  Int
+  stepType   String   // APPROVAL, REVIEW, SIGNATURE, NOTIFICATION
+
+  // Step configuration
+  title      String
+  description String?
+  assignees  Json     // Array of user/role IDs
+
+  // Step status
+  status     String   @default("PENDING") // PENDING, IN_PROGRESS, COMPLETED, SKIPPED
+  assignedTo String?  // Currently assigned user
+  assignedAt DateTime?
+
+  // Step completion
+  completedBy String?
+  completedAt DateTime?
+  decision   String?  // APPROVED, REJECTED, SIGNED
+  comments   String?
+  attachments Json?   // Array of attachment paths
+
+  // Time tracking
+  dueDate    DateTime?
+  completedIn Int?     // Time to complete in minutes
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  workflow DocumentWorkflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@unique([workflowId, stepOrder])
+  @@index([workflowId])
+  @@index([stepOrder])
+  @@index([status])
+  @@index([assignedTo])
+  @@index([dueDate])
+  @@map("document_workflow_steps")
+}
+
+// Document Comment Model
+model DocumentComment {
+  id         String   @id @default(cuid())
+  documentId String
+  content    String
+
+  // Comment threading
+  parentId   String?
+  parent     DocumentComment? @relation("CommentThread", fields: [parentId], references: [id])
+  replies    DocumentComment[] @relation("CommentThread")
+
+  // Comment metadata
+  isEdited   Boolean  @default(false)
+  editedAt   DateTime?
+  isResolved Boolean  @default(false)
+  resolvedBy String?
+  resolvedAt DateTime?
+
+  // Comment location (for specific document sections)
+  page       Int?
+  position   Json?    // X,Y coordinates or text range
+
+  createdBy  String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  // Relations
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  author User @relation("DocumentCommentAuthor", fields: [createdBy], references: [id])
+  resolver User? @relation("DocumentCommentResolver", fields: [resolvedBy], references: [id])
+
+  @@index([documentId])
+  @@index([parentId])
+  @@index([createdBy])
+  @@index([isResolved])
+  @@index([createdAt])
+  @@map("document_comments")
+}
+
 model SystemConfig {
   id          String  @id @default(cuid())
   key         String  @unique
@@ -814,7 +1591,8 @@ model CaseStageAssignment {
   stageConfig Stage @relation(fields: [stage], references: [stage])
 
   // Checklist completions for this stage assignment
-  checklistCompletions ChecklistCompletion[]
+  checklistCompletions ChecklistItemCompletion[] @relation("ChecklistCompletions")
+  stageChecklistCompletions ChecklistCompletion[] @relation("StageChecklistCompletions")
 
   @@unique([caseId, stage])
   @@index([caseId])
@@ -896,7 +1674,7 @@ model ChecklistCompletion {
   updatedAt DateTime @updatedAt
 
   // Relations
-  caseStageAssignment CaseStageAssignment @relation(fields: [caseStageId], references: [id], onDelete: Cascade)
+  caseStageAssignment CaseStageAssignment @relation("StageChecklistCompletions", fields: [caseStageId], references: [id], onDelete: Cascade)
   checklist StageChecklist @relation(fields: [checklistId], references: [id])
 
   @@unique([caseStageId, checklistId])
@@ -942,4 +1720,578 @@ model StageNotification {
   @@index([priority])
   @@index([createdAt])
   @@map("stage_notifications")
+}
+
+// ========================================
+// VALIDATION AND CONTROL SYSTEM MODELS
+// ========================================
+
+// Dynamic Checklist Template Model
+model ChecklistTemplate {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  stage       CaseStage
+  isActive    Boolean  @default(true)
+  version     Int      @default(1)
+
+  // Template configuration
+  defaultItems Json?    // Default checklist items
+  autoGenerate Boolean  @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  checklistItems ChecklistItem[]
+
+  @@unique([name, version])
+  @@index([stage])
+  @@index([isActive])
+  @@map("checklist_templates")
+}
+
+// Checklist Item Model
+model ChecklistItem {
+  id            String           @id @default(cuid())
+  templateId    String
+  title         String
+  description   String?
+  type          ChecklistItemType
+  isRequired    Boolean          @default(true)
+  sequence      Int
+  estimatedTime Int?             // Estimated completion time in minutes
+
+  // Item configuration
+  validationRule String?         // Validation rule or expression
+  attachmentRequired Boolean     @default(false)
+  attachmentTypes Json?          // Allowed attachment types
+  dependencies    Json?          // Dependencies on other items
+  autoValidate    Boolean        @default(false)
+
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  template ChecklistTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  completions ChecklistItemCompletion[]
+
+  @@unique([templateId, sequence])
+  @@index([templateId])
+  @@index([type])
+  @@index([isRequired])
+  @@index([isActive])
+  @@map("checklist_items")
+}
+
+// Checklist Item Completion Model
+model ChecklistItemCompletion {
+  id             String   @id @default(cuid())
+  caseStageId    String   // Links to CaseStageAssignment
+  itemId         String
+  isCompleted    Boolean  @default(false)
+  completedAt    DateTime?
+  completedBy    String?  // User who completed the item
+  notes          String?  // Notes about completion
+  attachmentPath String?  // Path to attached document if applicable
+
+  // Validation data
+  validationResult Json?   // Result of validation checks
+  validationErrors Json?   // List of validation errors
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  caseStageAssignment CaseStageAssignment @relation("ChecklistCompletions", fields: [caseStageId], references: [id], onDelete: Cascade)
+  item ChecklistItem @relation(fields: [itemId], references: [id])
+
+  @@unique([caseStageId, itemId])
+  @@index([caseStageId])
+  @@index([itemId])
+  @@index([isCompleted])
+  @@index([completedBy])
+  @@map("checklist_item_completions")
+}
+
+// Digital Signature Model
+model DigitalSignature {
+  id           String       @id @default(cuid())
+  userId       String
+  signatureType SignatureType
+  entityType   String       // case, document, approval, etc.
+  entityId     String
+  signatureData Json        // Encrypted signature data
+
+  // Signature metadata
+  ipAddress    String?
+  userAgent    String?
+  deviceInfo   Json?        // Device and browser information
+  geolocation  Json?        // GPS coordinates if available
+  biometricData Json?       // Biometric verification data if used
+
+  // Delegation information
+  delegatedBy   String?     // User who delegated this signature
+  delegationReason String?  // Reason for delegation
+
+  isActive Boolean @default(true)
+  revokedAt DateTime?
+  revokedBy String?
+  revokedReason String?
+
+  createdAt DateTime @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id])
+  document Document? @relation("DocumentSignatures", fields: [entityId], references: [id])
+
+  @@index([userId])
+  @@index([signatureType])
+  @@index([entityType, entityId])
+  @@index([isActive])
+  @@index([createdAt])
+  @@map("digital_signatures")
+}
+
+// Approval Workflow Model
+model ApprovalWorkflow {
+  id            String        @id @default(cuid())
+  caseId        String
+  stage         CaseStage
+  workflowType  String        // Type of approval workflow
+  title         String
+  description   String?
+
+  // Workflow configuration
+  requiredApprovals Int       @default(1)
+  approvalMatrix     Json?    // Approval rules and hierarchy
+  autoApproveRules   Json?    // Rules for automatic approval
+
+  // Workflow status
+  status        ApprovalStatus @default(PENDING)
+  initiatedBy   String
+  initiatedAt   DateTime       @default(now())
+  completedAt   DateTime?
+  completedBy   String?
+
+  // Time tracking
+  dueDate       DateTime?
+  escalatedAt   DateTime?
+  escalatedTo   String?        // Escalated to user/role
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  case Case @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  initiator User @relation("ApprovalInitiator", fields: [initiatedBy], references: [id])
+  completer User? @relation("ApprovalCompleter", fields: [completedBy], references: [id])
+
+  approvals Approval[]
+
+  @@index([caseId])
+  @@index([stage])
+  @@index([status])
+  @@index([initiatedBy])
+  @@index([dueDate])
+  @@map("approval_workflows")
+}
+
+// Approval Model
+model Approval {
+  id            String        @id @default(cuid())
+  workflowId    String
+  userId        String
+  approvalLevel Int           // Level in approval hierarchy
+  decision      ApprovalStatus @default(PENDING)
+
+  // Approval details
+  comments      String?
+  conditions    Json?         // Conditions or requirements
+  delegationTo  String?       // Delegated to another user
+
+  // Time tracking
+  reviewedAt    DateTime?
+  responseTime  Int?          // Response time in hours
+
+  // Metadata
+  ipAddress     String?
+  userAgent     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  workflow ApprovalWorkflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([workflowId, userId])
+  @@index([workflowId])
+  @@index([userId])
+  @@index([decision])
+  @@index([reviewedAt])
+  @@map("approvals")
+}
+
+// Time Tracking Model
+model TimeTracking {
+  id            String   @id @default(cuid())
+  caseId        String
+  stage         CaseStage
+  action        String   // START, PAUSE, RESUME, COMPLETE, EXTEND
+
+  // Time data
+  startTime     DateTime @default(now())
+  endTime       DateTime?
+  duration      Int?     // Duration in minutes
+  pausedDuration Int?    // Total paused time in minutes
+
+  // Reason and justification
+  reason        String?  // Reason for action
+  justification String?  // Justification for extensions or pauses
+
+  // User attribution
+  userId        String   // User who performed the action
+
+  // Alert configuration
+  alertThreshold Int?    // Alert threshold in hours
+  alertSent      Boolean @default(false)
+
+  createdAt DateTime @default(now())
+
+  // Relations
+  case Case @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([caseId])
+  @@index([stage])
+  @@index([action])
+  @@index([userId])
+  @@index([startTime])
+  @@map("time_tracking")
+}
+
+// Parallel Review Assignment Model
+model ReviewAssignment {
+  id            String    @id @default(cuid())
+  caseId        String
+  reviewType    ReviewType
+  assignedTo    String    // User ID
+  assignedBy    String    // User who made the assignment
+
+  // Assignment details
+  priority      String    @default("medium")
+  instructions  String?
+  dueDate       DateTime?
+  estimatedTime Int?      // Estimated time in hours
+
+  // Review status
+  status        String    @default("ASSIGNED") // ASSIGNED, IN_PROGRESS, COMPLETED, REJECTED
+  startedAt     DateTime?
+  completedAt   DateTime?
+
+  // Review configuration
+  parallelWith  Json?     // IDs of parallel reviews
+  dependsOn     Json?     // Dependencies on other reviews
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  case Case @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  assignee User @relation("ReviewAssignee", fields: [assignedTo], references: [id])
+  assigner User @relation("ReviewAssigner", fields: [assignedBy], references: [id])
+
+  reviews Review[]
+
+  @@index([caseId])
+  @@index([reviewType])
+  @@index([assignedTo])
+  @@index([status])
+  @@index([dueDate])
+  @@map("review_assignments")
+}
+
+// Review Model
+model Review {
+  id             String   @id @default(cuid())
+  assignmentId   String
+  reviewerId     String
+
+  // Review content
+  findings       String
+  recommendations String?
+  conclusion     String
+  rating         Int?     // Review rating (1-5)
+
+  // Review decision
+  decision       String   // APPROVED, REJECTED, CONDITIONAL, NEEDS_REVISION
+
+  // Supporting evidence
+  evidence       Json?    // Supporting documents and evidence
+  attachments    Json?    // List of attachment paths
+
+  // Time tracking
+  reviewTime     Int?     // Time spent in minutes
+
+  // Metadata
+  ipAddress      String?
+  userAgent      String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  assignment ReviewAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  reviewer User @relation("ReviewReviewer", fields: [reviewerId], references: [id])
+
+  @@index([assignmentId])
+  @@index([reviewerId])
+  @@index([decision])
+  @@index([createdAt])
+  @@map("reviews")
+}
+
+// Observation Model
+model Observation {
+  id           String             @id @default(cuid())
+  caseId       String
+  stage        CaseStage?
+  title        String
+  description  String
+
+  // Categorization
+  category     String
+  subcategory  String?
+  priority     ObservationPriority @default(MEDIUM)
+  status       ObservationStatus   @default(OPEN)
+
+  // Attribution
+  observedBy   String   // User who created the observation
+  assignedTo   String?  // User assigned to respond
+
+  // Time tracking
+  deadline     DateTime?
+  resolvedAt   DateTime?
+
+  // Observation thread
+  parentObservationId String? // For threaded conversations
+  responseTo          String? // ID of observation being responded to
+
+  // Metadata
+  tags         String?  // Comma-separated tags
+  attachments  Json?    // List of attachment paths
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  case Case @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  observer User @relation("ObservationObserver", fields: [observedBy], references: [id])
+  assignee User? @relation("ObservationAssignee", fields: [assignedTo], references: [id])
+
+  parentObservation Observation? @relation("ObservationThread", fields: [parentObservationId], references: [id])
+  childObservations Observation[] @relation("ObservationThread")
+
+  responses ObservationResponse[]
+
+  @@index([caseId])
+  @@index([stage])
+  @@index([priority])
+  @@index([status])
+  @@index([observedBy])
+  @@index([assignedTo])
+  @@index([deadline])
+  @@map("observations")
+}
+
+// Observation Response Model
+model ObservationResponse {
+  id            String   @id @default(cuid())
+  observationId String
+  userId        String
+  response      String
+
+  // Response metadata
+  responseType  String   // ACKNOWLEDGMENT, CLARIFICATION, ACTION, RESOLUTION
+  attachments   Json?    // List of attachment paths
+
+  // Time tracking
+  responseTime  Int?     // Time to respond in hours
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  observation Observation @relation(fields: [observationId], references: [id], onDelete: Cascade)
+  user User @relation("ObservationResponder", fields: [userId], references: [id])
+
+  @@index([observationId])
+  @@index([userId])
+  @@index([responseType])
+  @@index([createdAt])
+  @@map("observation_responses")
+}
+
+// Validation Rule Model
+model ValidationRule {
+  id            String             @id @default(cuid())
+  name          String
+  description   String?
+  type          ValidationRuleType
+  stage         CaseStage?
+
+  // Rule configuration
+  expression    String             // Validation expression or rule
+  errorMessage  String             // Error message to display
+  severity      String             @default("ERROR") // ERROR, WARNING, INFO
+
+  // Rule metadata
+  isActive      Boolean            @default(true)
+  version       Int                @default(1)
+
+  // Dependencies
+  dependsOn     Json?              // Dependencies on other rules
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  executions ValidationExecution[]
+
+  @@unique([name, version])
+  @@index([type])
+  @@index([stage])
+  @@index([isActive])
+  @@map("validation_rules")
+}
+
+// Validation Execution Model
+model ValidationExecution {
+  id          String   @id @default(cuid())
+  ruleId      String
+  caseId      String
+  stage       CaseStage?
+
+  // Execution details
+  entityType  String   // case, document, checklist_item, etc.
+  entityId    String
+  context     Json?    // Context data for validation
+
+  // Results
+  passed      Boolean  @default(false)
+  errors      Json?    // Validation errors
+  warnings    Json?    // Validation warnings
+
+  // Metadata
+  executedBy  String?  // User who triggered validation
+  executedAt  DateTime @default(now())
+
+  // Relations
+  rule ValidationRule @relation(fields: [ruleId], references: [id])
+  case Case @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@index([ruleId])
+  @@index([caseId])
+  @@index([stage])
+  @@index([entityType, entityId])
+  @@index([passed])
+  @@index([executedAt])
+  @@map("validation_executions")
+}
+
+// Risk Assessment Model
+model RiskAssessment {
+  id            String    @id @default(cuid())
+  caseId        String
+  stage         CaseStage?
+
+  // Risk identification
+  riskFactors   Json      // Identified risk factors
+  riskLevel     RiskLevel
+  riskScore     Float     // Calculated risk score (0-100)
+
+  // Impact assessment
+  likelihood    Int       // 1-5 scale
+  impact        Int       // 1-5 scale
+  urgency       Int       // 1-5 scale
+
+  // Risk details
+  description   String
+  mitigation    String?   // Mitigation strategies
+  contingency   String?   // Contingency plans
+
+  // Assessment metadata
+  assessedBy    String    // User who performed assessment
+  assessmentDate DateTime @default(now())
+  validUntil    DateTime? // When assessment expires
+
+  // Recommendations
+  recommendations Json?    // Recommended actions
+
+  // Status tracking
+  status        String    @default("ACTIVE") // ACTIVE, MITIGATED, ACCEPTED, CLOSED
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  case Case @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  assessor User @relation(fields: [assessedBy], references: [id])
+
+  alerts RiskAlert[]
+
+  @@index([caseId])
+  @@index([stage])
+  @@index([riskLevel])
+  @@index([riskScore])
+  @@index([assessedBy])
+  @@index([status])
+  @@map("risk_assessments")
+}
+
+// Risk Alert Model
+model RiskAlert {
+  id              String   @id @default(cuid())
+  riskAssessmentId String
+  alertType       AlertType
+
+  // Alert details
+  title           String
+  message         String
+  severity        String   // LOW, MEDIUM, HIGH, CRITICAL
+
+  // Alert status
+  isActive        Boolean  @default(true)
+  acknowledgedAt  DateTime?
+  acknowledgedBy  String?
+  resolvedAt      DateTime?
+  resolvedBy      String?
+
+  // Notification settings
+  sendEmail       Boolean  @default(true)
+  sendSMS         Boolean  @default(false)
+  recipients      Json?    // List of recipient user IDs
+
+  // Alert configuration
+  triggerConditions Json?   // Conditions that triggered this alert
+  escalationRules    Json?   // Escalation rules
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  riskAssessment RiskAssessment @relation(fields: [riskAssessmentId], references: [id], onDelete: Cascade)
+
+  acknowledger User? @relation("RiskAlertAcknowledger", fields: [acknowledgedBy], references: [id])
+  resolver User? @relation("RiskAlertResolver", fields: [resolvedBy], references: [id])
+
+  @@index([riskAssessmentId])
+  @@index([alertType])
+  @@index([severity])
+  @@index([isActive])
+  @@index([createdAt])
+  @@map("risk_alerts")
 }
