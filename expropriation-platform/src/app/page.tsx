@@ -1,71 +1,251 @@
 import Link from 'next/link';
+import { ResponsiveContainer } from '@/components/ui/responsive-container';
+import { ThemeToggle } from '@/components/theme/theme-toggle';
+import { KeyboardShortcutsPanel } from '@/components/help/keyboard-shortcuts-panel';
+import { useKeyboardShortcuts, commonShortcuts } from '@/hooks/use-keyboard-shortcuts';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { FileText, Users, BarChart3, Keyboard, Lightbulb, Shield, Zap } from 'lucide-react';
 
 export default function Home() {
+  const shortcuts = [
+    {
+      ...commonShortcuts.help,
+      action: () => {
+        // Help action
+      },
+    },
+  ];
+
+  useKeyboardShortcuts(shortcuts);
+
+  const features = [
+    {
+      icon: FileText,
+      title: 'Gestión de Casos',
+      description: 'Seguimiento completo del ciclo de vida de los casos de expropiación con 17 etapas documentadas',
+      color: 'text-blue-600',
+      bgColor: 'bg-blue-100'
+    },
+    {
+      icon: Users,
+      title: 'Gestión de Usuarios',
+      description: 'Control de acceso basado en roles jerárquicos y estructura departamental',
+      color: 'text-green-600',
+      bgColor: 'bg-green-100'
+    },
+    {
+      icon: BarChart3,
+      title: 'Reportes y Análisis',
+      description: 'Informes detallados y métricas de rendimiento en tiempo real',
+      color: 'text-purple-600',
+      bgColor: 'bg-purple-100'
+    },
+    {
+      icon: Shield,
+      title: 'Seguridad y Auditoría',
+      description: 'Trazabilidad completa de todas las acciones con registros inmutables',
+      color: 'text-red-600',
+      bgColor: 'bg-red-100'
+    },
+    {
+      icon: Zap,
+      title: 'Rendimiento',
+      description: 'Optimizado para velocidad y accesibilidad con soporte para todos los dispositivos',
+      color: 'text-orange-600',
+      bgColor: 'bg-orange-100'
+    },
+    {
+      icon: Lightbulb,
+      title: 'Inteligencia Artificial',
+      description: 'Asistencia inteligente para la gestión y predicción de casos',
+      color: 'text-yellow-600',
+      bgColor: 'bg-yellow-100'
+    }
+  ];
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
-      <div className="container mx-auto px-4 py-16">
-        <div className="text-center">
-          <h1 className="text-4xl font-bold text-gray-900 mb-6">
-            Plataforma de Gestión de Expropiación
-          </h1>
-          <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
-            Sistema integral para la gestión y seguimiento de casos de expropiación en la República Dominicana
-          </p>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-16">
-            <div className="bg-white p-8 rounded-lg shadow-md border border-gray-200">
-              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mb-4 mx-auto">
-                <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
+    <div className="min-h-screen bg-gradient-to-b from-background to-muted/50">
+      {/* Header */}
+      <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
+        <ResponsiveContainer>
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center space-x-4">
+              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+                <span className="text-primary-foreground font-bold text-sm">MOPC</span>
               </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                Gestión de Casos
-              </h3>
-              <p className="text-gray-600">
-                Seguimiento completo del ciclo de vida de los casos de expropiación
-              </p>
+              <span className="font-semibold text-lg">Plataforma de Expropiación</span>
             </div>
-
-            <div className="bg-white p-8 rounded-lg shadow-md border border-gray-200">
-              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mb-4 mx-auto">
-                <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                </svg>
-              </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                Gestión de Usuarios
-              </h3>
-              <p className="text-gray-600">
-                Control de acceso basado en roles y departamentos
-              </p>
-            </div>
-
-            <div className="bg-white p-8 rounded-lg shadow-md border border-gray-200">
-              <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mb-4 mx-auto">
-                <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                </svg>
-              </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                Reportes y Análisis
-              </h3>
-              <p className="text-gray-600">
-                Informes detallados y métricas de rendimiento
-              </p>
+            <div className="flex items-center space-x-4">
+              <ThemeToggle />
+              <KeyboardShortcutsPanel shortcuts={shortcuts}>
+                <Button variant="ghost" size="sm" aria-label="Atajos de teclado">
+                  <Keyboard className="h-4 w-4" />
+                </Button>
+              </KeyboardShortcutsPanel>
             </div>
           </div>
+        </ResponsiveContainer>
+      </header>
 
-          <div className="mt-12">
-            <Link
-              href="/login"
-              className="inline-block bg-blue-600 text-white px-8 py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors"
-            >
-              Iniciar Sesión
-            </Link>
+      {/* Main Content */}
+      <main>
+        {/* Hero Section */}
+        <section className="py-20 sm:py-32">
+          <ResponsiveContainer>
+            <div className="text-center space-y-8">
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-foreground">
+                Plataforma de Gestión de
+                <span className="block text-primary">Expropiación</span>
+              </h1>
+              <p className="text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
+                Sistema integral para la gestión y seguimiento de casos de expropiación en la República Dominicana.
+                Moderno, accesible y seguro.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+                <Link href="/login">
+                  <Button size="lg" className="w-full sm:w-auto min-w-[140px]">
+                    Iniciar Sesión
+                  </Button>
+                </Link>
+                <KeyboardShortcutsPanel shortcuts={shortcuts}>
+                  <Button variant="outline" size="lg" className="w-full sm:w-auto min-w-[140px]">
+                    <Keyboard className="h-4 w-4 mr-2" />
+                    Atajos
+                  </Button>
+                </KeyboardShortcutsPanel>
+              </div>
+            </div>
+          </ResponsiveContainer>
+        </section>
+
+        {/* Features Section */}
+        <section className="py-20 bg-muted/30">
+          <ResponsiveContainer>
+            <div className="space-y-12">
+              <div className="text-center space-y-4">
+                <h2 className="text-3xl sm:text-4xl font-bold text-foreground">
+                  Características Principales
+                </h2>
+                <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+                  Una solución completa diseñada para optimizar el proceso de expropiación con tecnología de vanguardia
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {features.map((feature, index) => (
+                  <Card
+                    key={index}
+                    className="group hover:shadow-lg transition-all duration-300 border-0 shadow-md hover:-translate-y-1 focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2"
+                  >
+                    <CardContent className="p-6">
+                      <div className="space-y-4">
+                        <div className={`w-12 h-12 ${feature.bgColor} rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform`}>
+                          <feature.icon className={`h-6 w-6 ${feature.color}`} />
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-semibold text-foreground mb-2">
+                            {feature.title}
+                          </h3>
+                          <p className="text-muted-foreground leading-relaxed">
+                            {feature.description}
+                          </p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          </ResponsiveContainer>
+        </section>
+
+        {/* Accessibility Section */}
+        <section className="py-20">
+          <ResponsiveContainer>
+            <div className="text-center space-y-8">
+              <h2 className="text-3xl sm:text-4xl font-bold text-foreground">
+                Accesibilidad e Inclusión
+              </h2>
+              <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
+                Diseñado siguiendo los estándares WCAG 2.1 AA para garantizar que todos los usuarios puedan acceder y utilizar la plataforma sin barreras.
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 mt-12">
+                <div className="text-center space-y-2">
+                  <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
+                    <span className="text-2xl">⌨️</span>
+                  </div>
+                  <h3 className="font-semibold">Navegación por Teclado</h3>
+                  <p className="text-sm text-muted-foreground">Acceso completo a todas las funciones</p>
+                </div>
+                <div className="text-center space-y-2">
+                  <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
+                    <span className="text-2xl">🎨</span>
+                  </div>
+                  <h3 className="font-semibold">Alto Contraste</h3>
+                  <p className="text-sm text-muted-foreground">Modo oscuro y opciones visuales</p>
+                </div>
+                <div className="text-center space-y-2">
+                  <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
+                    <span className="text-2xl">📱</span>
+                  </div>
+                  <h3 className="font-semibold">Diseño Responsivo</h3>
+                  <p className="text-sm text-muted-foreground">Optimizado para todos los dispositivos</p>
+                </div>
+                <div className="text-center space-y-2">
+                  <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
+                    <span className="text-2xl">🔊</span>
+                  </div>
+                  <h3 className="font-semibold">Lector de Pantalla</h3>
+                  <p className="text-sm text-muted-foreground">Compatible con lectores de pantalla</p>
+                </div>
+              </div>
+            </div>
+          </ResponsiveContainer>
+        </section>
+
+        {/* CTA Section */}
+        <section className="py-20 bg-primary text-primary-foreground">
+          <ResponsiveContainer>
+            <div className="text-center space-y-8">
+              <h2 className="text-3xl sm:text-4xl font-bold">
+                ¿Listo para optimizar la gestión de casos?
+              </h2>
+              <p className="text-xl opacity-90 max-w-2xl mx-auto">
+                Únase a la plataforma digital moderna para la gestión de expropiaciones en la República Dominicana
+              </p>
+              <Link href="/login">
+                <Button size="lg" variant="secondary" className="min-w-[140px]">
+                  Comenzar Ahora
+                </Button>
+              </Link>
+            </div>
+          </ResponsiveContainer>
+        </section>
+      </main>
+
+      {/* Footer */}
+      <footer className="border-t bg-muted/30 py-12">
+        <ResponsiveContainer>
+          <div className="text-center space-y-4">
+            <div className="flex items-center justify-center space-x-4">
+              <div className="w-6 h-6 bg-primary rounded flex items-center justify-center">
+                <span className="text-primary-foreground font-bold text-xs">M</span>
+              </div>
+              <span className="font-semibold">Ministerio de Obras Públicas y Comunicaciones</span>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              © 2024 República Dominicana. Todos los derechos reservados.
+            </p>
+            <div className="flex items-center justify-center space-x-6 text-sm text-muted-foreground">
+              <a href="#" className="hover:text-foreground transition-colors">Política de Privacidad</a>
+              <a href="#" className="hover:text-foreground transition-colors">Términos de Uso</a>
+              <a href="#" className="hover:text-foreground transition-colors">Accesibilidad</a>
+            </div>
           </div>
-        </div>
-      </div>
+        </ResponsiveContainer>
+      </footer>
     </div>
   );
 }
