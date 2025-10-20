@@ -14,8 +14,8 @@ import { getAuthErrorMessage } from '@/lib/auth-utils';
 import { Loader2, Eye, EyeOff, AlertCircle } from 'lucide-react';
 
 const loginSchema = z.object({
-  email: z.string().email('Correo electrónico inválido'),
-  password: z.string().min(1, 'La contraseña es requerida'),
+  email: z.string().email('Correo electrónico no válido'),
+  password: z.string().min(1, 'La contraseña es obligatoria'),
   remember: z.boolean().default(false),
 });
 
@@ -118,7 +118,7 @@ export function LoginForm() {
           Plataforma MOPC
         </CardTitle>
         <CardDescription className="text-center">
-          Ingrese sus credenciales para acceder al sistema
+          Ingresa tus credenciales para acceder al sistema
         </CardDescription>
       </CardHeader>
 
@@ -152,7 +152,7 @@ export function LoginForm() {
               <Input
                 id="password"
                 type={showPassword ? 'text' : 'password'}
-                placeholder="Ingrese su contraseña"
+                placeholder="Ingresa tu contraseña"
                 {...register('password')}
                 disabled={isLoading}
                 className={errors.password ? 'border-destructive pr-10' : 'pr-10'}
@@ -214,7 +214,7 @@ export function LoginForm() {
               className="text-sm text-primary hover:underline"
               disabled={isLoading}
             >
-              ¿Olvidó su contraseña?
+              ¿Olvidaste tu contraseña?
             </button>
           </div>
         </CardFooter>
