@@ -140,3 +140,44 @@ export function validatePassword(password: string): {
     errors,
   };
 }
+
+export function formatFileSize(bytes: number): string {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+export function formatDistanceToNow(date: Date | string): string {
+  const dateObj = typeof date === "string" ? new Date(date) : date;
+  const now = new Date();
+  const diffInSeconds = Math.floor((now.getTime() - dateObj.getTime()) / 1000);
+
+  if (diffInSeconds < 60) {
+    return 'hace unos segundos';
+  }
+
+  const diffInMinutes = Math.floor(diffInSeconds / 60);
+  if (diffInMinutes < 60) {
+    return `hace ${diffInMinutes} minuto${diffInMinutes > 1 ? 's' : ''}`;
+  }
+
+  const diffInHours = Math.floor(diffInMinutes / 60);
+  if (diffInHours < 24) {
+    return `hace ${diffInHours} hora${diffInHours > 1 ? 's' : ''}`;
+  }
+
+  const diffInDays = Math.floor(diffInHours / 24);
+  if (diffInDays < 30) {
+    return `hace ${diffInDays} día${diffInDays > 1 ? 's' : ''}`;
+  }
+
+  const diffInMonths = Math.floor(diffInDays / 30);
+  if (diffInMonths < 12) {
+    return `hace ${diffInMonths} mes${diffInMonths > 1 ? 'es' : ''}`;
+  }
+
+  const diffInYears = Math.floor(diffInMonths / 12);
+  return `hace ${diffInYears} año${diffInYears > 1 ? 's' : ''}`;
+}

@@ -18,6 +18,7 @@ import { toast } from 'react-hot-toast'
 
 import { CreateCaseInput } from '@/lib/validations/case'
 import { User, Department } from '@/types/client'
+import { CaseCreationDocuments } from '@/components/cases/case-creation-documents'
 
 const CASE_STAGES = [
   { value: 'INITIAL_REVIEW', label: 'Revisión Inicial' },
@@ -58,12 +59,27 @@ const OWNER_TYPES = [
   { value: 'sucesion', label: 'Sucesión' }
 ]
 
+interface CaseCreationDocument {
+  file: File
+  title: string
+  description: string
+  documentType: string
+  category: string
+  securityLevel: string
+  tags: string
+  uploadProgress?: number
+  uploadStatus?: 'pending' | 'uploading' | 'complete' | 'error'
+  uploadError?: string
+  documentId?: string
+}
+
 export default function CreateCasePage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [departments, setDepartments] = useState<Department[]>([])
   const [users, setUsers] = useState<User[]>([])
+  const [documents, setDocuments] = useState<CaseCreationDocument[]>([])
   const [formData, setFormData] = useState<CreateCaseInput>({
     fileNumber: '',
     title: '',
@@ -185,7 +201,8 @@ export default function CreateCasePage() {
 
     setLoading(true)
     try {
-      const response = await fetch('/api/cases', {
+      // First, create the case
+      const caseResponse = await fetch('/api/cases', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -193,19 +210,105 @@ export default function CreateCasePage() {
         body: JSON.stringify(formData),
       })
 
-      if (!response.ok) {
-        const errorData = await response.json()
+      if (!caseResponse.ok) {
+        const errorData = await caseResponse.json()
         throw new Error(errorData.error || 'Failed to create case')
       }
 
-      const newCase = await response.json()
+      const newCase = await caseResponse.json()
       toast.success('Caso creado exitosamente')
+
+      // If there are documents, upload them
+      if (documents.length > 0) {
+        await uploadDocuments(newCase.id)
+      }
+
       router.push(`/cases/${newCase.id}`)
     } catch (error) {
       console.error('Error creating case:', error)
       toast.error(error instanceof Error ? error.message : 'Error al crear el caso')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const uploadDocuments = async (caseId: string) => {
+    const uploadPromises = documents.map(async (doc) => {
+      try {
+        // Update document status to uploading
+        setDocuments(prev => prev.map(d =>
+          d.file === doc.file ? { ...d, uploadStatus: 'uploading' as const, uploadProgress: 0 } : d
+        ))
+
+        const formData = new FormData()
+        formData.append('file', doc.file)
+        formData.append('documentData', JSON.stringify({
+          title: doc.title,
+          description: doc.description,
+          documentType: doc.documentType,
+          category: doc.category,
+          securityLevel: doc.securityLevel,
+          tags: doc.tags,
+          caseId,
+        }))
+
+        // Simulate progress
+        const progressInterval = setInterval(() => {
+          setDocuments(prev => prev.map(d =>
+            d.file === doc.file ? {
+              ...d,
+              uploadProgress: Math.min((d.uploadProgress || 0) + 10, 90)
+            } : d
+          ))
+        }, 200)
+
+        const response = await fetch(`/api/cases/${caseId}/documents`, {
+          method: 'POST',
+          body: formData,
+        })
+
+        clearInterval(progressInterval)
+
+        if (!response.ok) {
+          const error = await response.json()
+          throw new Error(error.error || 'Upload failed')
+        }
+
+        const document = await response.json()
+
+        // Update document status to complete
+        setDocuments(prev => prev.map(d =>
+          d.file === doc.file ? {
+            ...d,
+            uploadStatus: 'complete' as const,
+            uploadProgress: 100,
+            documentId: document.id
+          } : d
+        ))
+
+        return document
+      } catch (error) {
+        console.error('Upload error:', error)
+
+        // Update document status to error
+        setDocuments(prev => prev.map(d =>
+          d.file === doc.file ? {
+            ...d,
+            uploadStatus: 'error' as const,
+            uploadError: error instanceof Error ? error.message : 'Unknown error'
+          } : d
+        ))
+
+        toast.error(`Error al subir ${doc.title}`)
+        throw error
+      }
+    })
+
+    try {
+      await Promise.all(uploadPromises)
+      toast.success(`${documents.length} documento(s) subido(s) exitosamente`)
+    } catch (error) {
+      toast.error('Algunos documentos no pudieron ser subidos')
     }
   }
 
@@ -252,10 +355,11 @@ export default function CreateCasePage() {
 
       <form onSubmit={handleSubmit}>
         <Tabs defaultValue="basic" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="basic">Información Básica</TabsTrigger>
             <TabsTrigger value="property">Propiedad</TabsTrigger>
             <TabsTrigger value="owner">Propietario</TabsTrigger>
+            <TabsTrigger value="documents">Documentos</TabsTrigger>
             <TabsTrigger value="assignment">Asignación</TabsTrigger>
           </TabsList>
 
@@ -592,6 +696,16 @@ export default function CreateCasePage() {
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* Documents Tab */}
+          <TabsContent value="documents">
+            <CaseCreationDocuments
+              documents={documents}
+              onDocumentsChange={setDocuments}
+              disabled={loading}
+              maxFiles={10}
+            />
           </TabsContent>
 
           {/* Assignment Tab */}

@@ -22,7 +22,10 @@ import {
   XCircle,
   Archive,
   UserPlus,
-  Settings
+  Settings,
+  Upload,
+  FolderOpen,
+  Search
 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -35,7 +38,10 @@ import { Progress } from '@/components/ui/progress'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { toast } from 'react-hot-toast'
 
-import { Case } from '@/types/client'
+import { Case, Document } from '@/types/client'
+import { DocumentUpload } from '@/components/cases/document-upload'
+import { DocumentList } from '@/components/cases/document-list'
+import { DocumentTemplates } from '@/components/cases/document-templates'
 
 const CASE_STATUSES = {
   'PENDIENTE': { label: 'Pendiente', icon: Clock, color: 'bg-yellow-100 text-yellow-800' },
@@ -82,6 +88,8 @@ export default function CaseDetailPage() {
 
   const [case_, setCase] = useState<Case | null>(null)
   const [loading, setLoading] = useState(true)
+  const [activeTab, setActiveTab] = useState('overview')
+  const [refreshTrigger, setRefreshTrigger] = useState(0)
 
   // Fetch case details
   useEffect(() => {
@@ -149,6 +157,18 @@ export default function CaseDetailPage() {
       label: priority,
       color: 'bg-gray-100 text-gray-800'
     }
+  }
+
+  // Handle document upload completion
+  const handleDocumentUploadComplete = (document: Document) => {
+    setRefreshTrigger(prev => prev + 1)
+    toast.success('Documento subido exitosamente')
+  }
+
+  // Handle document selection
+  const handleDocumentSelect = (document: Document) => {
+    // Could open a detail modal or navigate to document details
+    console.log('Selected document:', document)
   }
 
   if (status === 'loading' || loading) {
@@ -270,12 +290,23 @@ export default function CaseDetailPage() {
       </div>
 
       {/* Case Details Tabs */}
-      <Tabs defaultValue="overview" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="overview">Resumen</TabsTrigger>
           <TabsTrigger value="property">Propiedad</TabsTrigger>
           <TabsTrigger value="owner">Propietario</TabsTrigger>
           <TabsTrigger value="legal">Legal</TabsTrigger>
+          <TabsTrigger value="documents">
+            <div className="flex items-center gap-2">
+              <FolderOpen className="h-4 w-4" />
+              Documentos
+              {case_._count?.documents > 0 && (
+                <Badge variant="secondary" className="ml-1">
+                  {case_._count.documents}
+                </Badge>
+              )}
+            </div>
+          </TabsTrigger>
           <TabsTrigger value="activity">Actividad</TabsTrigger>
         </TabsList>
 
@@ -597,6 +628,34 @@ export default function CaseDetailPage() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Documents Tab */}
+        <TabsContent value="documents">
+          <div className="space-y-6">
+            {/* Document Upload Section */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <DocumentUpload
+                caseId={case_.id}
+                currentStage={case_.currentStage}
+                onUploadComplete={handleDocumentUploadComplete}
+              />
+
+              <DocumentTemplates
+                caseId={case_.id}
+                onDocumentCreated={handleDocumentUploadComplete}
+              />
+            </div>
+
+            <Separator />
+
+            {/* Document List */}
+            <DocumentList
+              caseId={case_.id}
+              onDocumentSelect={handleDocumentSelect}
+              refreshTrigger={refreshTrigger}
+            />
+          </div>
         </TabsContent>
 
         {/* Activity Tab */}

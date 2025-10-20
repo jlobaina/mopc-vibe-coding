@@ -76,20 +76,17 @@ export interface Case {
   };
   createdBy?: {
     id: string;
-    firstName: string;
-    lastName: string;
+    name: string;
     email: string;
   };
   assignedTo?: {
     id: string;
-    firstName: string;
-    lastName: string;
+    name: string;
     email: string;
   };
   supervisedBy?: {
     id: string;
-    firstName: string;
-    lastName: string;
+    name: string;
     email: string;
   };
   _count?: {
@@ -104,15 +101,141 @@ export interface Document {
   id: string;
   title: string;
   description?: string;
-  filePath: string;
   fileName: string;
-  mimeType: string;
+  originalFileName?: string;
+  filePath: string;
   fileSize: number;
+  mimeType: string;
+  fileHash?: string;
+  documentType: string;
+  category: string;
+  status: string;
+  securityLevel: string;
+  version: number;
+  isLatest: boolean;
+  isDraft: boolean;
   isPublic: boolean;
-  caseId: string;
+  isEncrypted: boolean;
+  tags?: string;
+  metadata?: any;
+  customFields?: any;
+  retentionPeriod?: number;
+  expiresAt?: Date;
+  contentText?: string;
+  isIndexed?: boolean;
+  indexedAt?: Date;
+  downloadCount?: number;
+  caseId?: string;
   uploadedById: string;
   createdAt: Date;
   updatedAt: Date;
+  uploadedBy?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    fullName?: string;
+  };
+  case?: {
+    id: string;
+    fileNumber: string;
+    title: string;
+  };
+  tagsRelations?: Array<{
+    id: string;
+    tag: string;
+    color?: string;
+  }>;
+  _count?: {
+    versions: number;
+    history: number;
+    signatures: number;
+  };
+  fileSizeFormatted?: string;
+}
+
+// Document form types
+export interface DocumentFormData {
+  title: string;
+  description?: string;
+  documentType: string;
+  category: string;
+  securityLevel: string;
+  caseId?: string;
+  tags?: string;
+  metadata?: any;
+  customFields?: any;
+  retentionPeriod?: number;
+  expiresAt?: string;
+}
+
+// Document search and filter types
+export interface DocumentSearchInput {
+  query?: string;
+  documentType?: string;
+  category?: string;
+  status?: string;
+  securityLevel?: string;
+  caseId?: string;
+  uploadedById?: string;
+  tags?: string;
+  sortBy?: string;
+  sortOrder?: string;
+  page: number;
+  limit: number;
+  dateFrom?: Date;
+  dateTo?: Date;
+}
+
+// Document version interface
+export interface DocumentVersion {
+  id: string;
+  documentId: string;
+  version: number;
+  title: string;
+  description?: string;
+  fileName: string;
+  filePath: string;
+  fileSize: number;
+  mimeType: string;
+  fileHash?: string;
+  changeDescription?: string;
+  isDraft: boolean;
+  createdById: string;
+  createdAt: Date;
+  uploadedBy?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    fullName?: string;
+  };
+  fileSizeFormatted?: string;
+}
+
+// Document history interface
+export interface DocumentHistory {
+  id: string;
+  documentId: string;
+  action: string;
+  description?: string;
+  userId: string;
+  previousValue?: string;
+  newValue?: string;
+  reason?: string;
+  notes?: string;
+  fileSize?: number;
+  fileName?: string;
+  filePath?: string;
+  ipAddress?: string;
+  userAgent?: string;
+  metadata?: any;
+  createdAt: Date;
+  user?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    fullName?: string;
+  };
 }
 
 export interface Activity {
@@ -133,9 +256,21 @@ export interface UserWithDepartment extends User {
 
 export interface CaseWithDetails extends Case {
   department: Department;
-  createdBy: User;
-  assignedTo?: User;
-  supervisedBy?: User;
+  createdBy?: {
+    id: string;
+    name: string;
+    email: string;
+  };
+  assignedTo?: {
+    id: string;
+    name: string;
+    email: string;
+  };
+  supervisedBy?: {
+    id: string;
+    name: string;
+    email: string;
+  };
   documents: Document[];
   _count: {
     documents: number;

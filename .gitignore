@@ -112,6 +112,5 @@ jspm_packages/
 .dynamodb/
 
 ../.idea
-../.claude
 
 /expropriation-platform/CLAUDE.md
