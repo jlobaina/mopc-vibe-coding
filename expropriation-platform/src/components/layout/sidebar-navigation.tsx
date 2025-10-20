@@ -145,6 +145,26 @@ const navigationItems: NavItem[] = [
     description: 'Gestión de documentos'
   },
   {
+    title: 'Notificaciones',
+    href: '/notifications',
+    icon: Bell,
+    description: 'Gestión de notificaciones',
+    children: [
+      {
+        title: 'Ver Notificaciones',
+        href: '/notifications',
+        icon: Bell,
+        description: 'Ver todas las notificaciones'
+      },
+      {
+        title: 'Configuración',
+        href: '/notifications/settings',
+        icon: Settings,
+        description: 'Configurar preferencias de notificación'
+      }
+    ]
+  },
+  {
     title: 'Administración',
     href: '/admin',
     icon: Settings,
