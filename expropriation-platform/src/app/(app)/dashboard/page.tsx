@@ -1,14 +1,11 @@
 'use client';
 
 import { useAuth } from '@/hooks/use-auth';
-import { ProtectedRoute } from '@/components/auth/protected-route';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { SidebarLayout } from '@/components/layout/sidebar-layout';
-import { SidebarProvider } from '@/hooks/use-sidebar';
 import { ThemeToggle } from '@/components/theme/theme-toggle';
 import { KeyboardShortcutsPanel } from '@/components/help/keyboard-shortcuts-panel';
 import { useKeyboardShortcuts, commonShortcuts } from '@/hooks/use-keyboard-shortcuts';
@@ -78,10 +75,7 @@ export default function DashboardPage() {
   useKeyboardShortcuts(shortcuts);
 
   return (
-    <ProtectedRoute>
-      <SidebarProvider>
-        <SidebarLayout>
-        <div className="p-6 lg:p-8 space-y-6">
+    <div className="p-6 lg:p-8 space-y-6">
           {/* Top Bar with utilities */}
           <div className="flex justify-between items-center mb-6">
             <div>
@@ -336,9 +330,6 @@ export default function DashboardPage() {
                 />
               </TabsContent>
             </Tabs>
-        </div>
-      </SidebarLayout>
-      </SidebarProvider>
-    </ProtectedRoute>
+    </div>
   );
 }

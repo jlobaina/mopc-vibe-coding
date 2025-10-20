@@ -1,0 +1,229 @@
+'use client';
+
+import { useState } from 'react';
+import { useAuth } from '@/hooks/use-auth';
+import { useRouter } from 'next/navigation';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
+import {
+  Building2,
+  BarChart3,
+  FileText,
+  Settings,
+  LogOut,
+  TrendingUp,
+  AlertTriangle,
+  Download,
+  Calendar,
+  Filter
+} from 'lucide-react';
+import { DashboardStats } from '@/components/dashboard/dashboard-stats';
+import { DashboardCharts } from '@/components/dashboard/dashboard-charts';
+import { DashboardCases } from '@/components/dashboard/dashboard-cases';
+import { DashboardAlerts } from '@/components/dashboard/dashboard-alerts';
+import { DateFilter, useDateFilter } from '@/components/dashboard/date-filter';
+import { ExportTools } from '@/components/dashboard/export-tools';
+
+export default function ReportsPage() {
+  const { user, signOut } = useAuth();
+  const router = useRouter();
+  const { dateRange, updateDateRange, updatePeriod, getApiParams } = useDateFilter();
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+        {/* Header */}
+        <header className="bg-white shadow-sm border-b sticky top-0 z-10">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex justify-between items-center h-16">
+              <div className="flex items-center space-x-4">
+                <Building2 className="h-8 w-8 text-primary" />
+                <div>
+                  <h1 className="text-xl font-bold text-gray-900">Plataforma MOPC</h1>
+                  <p className="text-xs text-gray-500">Sistema de Gestión de Casos de Expropiación</p>
+                </div>
+              </div>
+              <div className="flex items-center space-x-4">
+                <div className="text-right">
+                  <p className="text-sm font-medium text-gray-900">{user?.name}</p>
+                  <p className="text-xs text-gray-500">
+                    {user?.role} - {user?.department}
+                  </p>
+                </div>
+                <Button
+                  onClick={signOut}
+                  variant="outline"
+                  size="sm"
+                >
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Cerrar sesión
+                </Button>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        {/* Main Content */}
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          {/* Page Header */}
+          <div className="mb-8">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                  Reportes y Análisis
+                </h2>
+                <p className="text-gray-600">
+                  Sistema integral de generación de reportes y análisis de datos
+                </p>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Badge variant="outline" className="text-xs">
+                  {user?.role?.replace('_', ' ')}
+                </Badge>
+                <Badge variant="outline" className="text-xs">
+                  {user?.department}
+                </Badge>
+              </div>
+            </div>
+          </div>
+
+          {/* Date Filter */}
+          <div className="mb-8">
+            <Card>
+              <CardContent className="p-4">
+                <DateFilter
+                  onDateRangeChange={updateDateRange}
+                  onPeriodChange={updatePeriod}
+                  className="w-full"
+                />
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Reports Tabs */}
+          <Tabs defaultValue="overview" className="space-y-6">
+            <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:grid-cols-5">
+              <TabsTrigger value="overview" className="flex items-center space-x-2">
+                <BarChart3 className="h-4 w-4" />
+                <span className="hidden sm:inline">Resumen</span>
+              </TabsTrigger>
+              <TabsTrigger value="analytics" className="flex items-center space-x-2">
+                <TrendingUp className="h-4 w-4" />
+                <span className="hidden sm:inline">Análisis</span>
+              </TabsTrigger>
+              <TabsTrigger value="cases" className="flex items-center space-x-2">
+                <FileText className="h-4 w-4" />
+                <span className="hidden sm:inline">Casos</span>
+              </TabsTrigger>
+              <TabsTrigger value="alerts" className="flex items-center space-x-2">
+                <AlertTriangle className="h-4 w-4" />
+                <span className="hidden sm:inline">Alertas</span>
+              </TabsTrigger>
+              <TabsTrigger value="export" className="flex items-center space-x-2">
+                <Download className="h-4 w-4" />
+                <span className="hidden sm:inline">Exportar</span>
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="overview" className="space-y-6">
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  Resumen General del Período
+                </h3>
+                <p className="text-sm text-gray-600">
+                  Estadísticas y métricas clave para el período seleccionado
+                </p>
+              </div>
+              <DashboardStats departmentId={user?.departmentId} />
+            </TabsContent>
+
+            <TabsContent value="analytics" className="space-y-6">
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  Análisis Detallado
+                </h3>
+                <p className="text-sm text-gray-600">
+                  Visualizaciones interactivas y tendencias
+                </p>
+              </div>
+              <DashboardCharts departmentId={user?.departmentId} />
+            </TabsContent>
+
+            <TabsContent value="cases" className="space-y-6">
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  Análisis de Casos
+                </h3>
+                <p className="text-sm text-gray-600">
+                  Listado detallado y estado de casos
+                </p>
+              </div>
+              <DashboardCases
+                departmentId={user?.departmentId}
+                userId={user?.id}
+              />
+            </TabsContent>
+
+            <TabsContent value="alerts" className="space-y-6">
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  Sistema de Alertas
+                </h3>
+                <p className="text-sm text-gray-600">
+                  Alertas críticas y requerimientos de atención
+                </p>
+              </div>
+              <DashboardAlerts
+                departmentId={user?.departmentId}
+                userId={user?.id}
+              />
+            </TabsContent>
+
+            <TabsContent value="export" className="space-y-6">
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  Herramientas de Exportación
+                </h3>
+                <p className="text-sm text-gray-600">
+                  Genere reportes personalizados en PDF y Excel
+                </p>
+              </div>
+              <ExportTools departmentId={user?.departmentId} />
+            </TabsContent>
+          </Tabs>
+
+          {/* Quick Actions Footer */}
+          <div className="mt-8 pt-8 border-t">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <Button
+                  variant="outline"
+                  onClick={() => router.push('/dashboard')}
+                >
+                  <BarChart3 className="h-4 w-4 mr-2" />
+                  Volver al Dashboard
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => router.push('/cases')}
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  Ver Todos los Casos
+                </Button>
+              </div>
+              <div className="text-sm text-gray-500">
+                Última actualización: {new Date().toLocaleDateString('es-ES', {
+                  day: 'numeric',
+                  month: 'long',
+                  year: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                })}
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
+  );
+}
