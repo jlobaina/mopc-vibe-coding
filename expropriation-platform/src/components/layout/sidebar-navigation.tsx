@@ -364,7 +364,7 @@ export function SidebarNavigation({
               onClick={() => window.location.href = '/search'}
             >
               <Search className="h-4 w-4 mr-3" />
-              Buscar en todo
+              Búsqueda global
             </Button>
             <Button
               variant="ghost"
