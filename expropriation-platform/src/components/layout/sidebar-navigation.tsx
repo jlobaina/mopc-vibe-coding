@@ -1,13 +1,17 @@
 'use client'
 
 import { useState } from 'react'
-import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Separator } from '@/components/ui/separator'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { useAuth } from '@/hooks/use-auth'
 import {
   BarChart3,
@@ -230,62 +234,72 @@ export function SidebarNavigation({
     const active = isActive(item.href)
     const hasChildren = item.children && item.children.length > 0
 
+    const buttonContent = (
+      <Button
+        variant={active ? "secondary" : "ghost"}
+        className={cn(
+          "w-full justify-start text-left h-auto py-2 px-3",
+          isCollapsed && level === 0 && "justify-center px-2",
+          active && "bg-secondary font-medium",
+          "hover:bg-accent hover:text-accent-foreground transition-colors duration-200"
+        )}
+        onClick={() => {
+          if (hasChildren) {
+            toggleExpanded(item.title)
+          } else if (item.href) {
+            window.location.href = item.href
+          }
+        }}
+      >
+        <item.icon className={cn(
+          "h-4 w-4 flex-shrink-0",
+          isCollapsed && level === 0 ? "mr-0" : "mr-3"
+        )} />
+        {!isCollapsed || level > 0 ? (
+          <>
+            <span className="flex-1">{item.title}</span>
+            {item.badge && (
+              <Badge variant="secondary" className="ml-2 text-xs">
+                {item.badge}
+              </Badge>
+            )}
+            {hasChildren && (
+              isExpanded ?
+                <ChevronDown className="h-4 w-4 ml-2" /> :
+                <ChevronRight className="h-4 w-4 ml-2" />
+              )}
+          </>
+        ) : null}
+      </Button>
+    )
+
     return (
       <div key={item.title}>
-        <Button
-          variant={active ? "secondary" : "ghost"}
-          className={cn(
-            "w-full justify-start text-left h-auto py-2 px-3",
-            isCollapsed && level === 0 && "justify-center px-2",
-            active && "bg-secondary font-medium",
-            "hover:bg-accent hover:text-accent-foreground transition-colors duration-200"
-          )}
-          onClick={() => {
-            if (hasChildren) {
-              toggleExpanded(item.title)
-            } else if (item.href) {
-              window.location.href = item.href
-            }
-          }}
-        >
-          <item.icon className={cn(
-            "h-4 w-4 flex-shrink-0",
-            isCollapsed && level === 0 ? "mr-0" : "mr-3"
-          )} />
-          {!isCollapsed || level > 0 ? (
-            <>
-              <span className="flex-1">{item.title}</span>
-              {item.badge && (
-                <Badge variant="secondary" className="ml-2 text-xs">
-                  {item.badge}
-                </Badge>
-              )}
-              {hasChildren && (
-                isExpanded ?
-                  <ChevronDown className="h-4 w-4 ml-2" /> :
-                  <ChevronRight className="h-4 w-4 ml-2" />
-              )}
-            </>
-          ) : null}
-        </Button>
+        {item.description ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              {buttonContent}
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>{item.description}</p>
+            </TooltipContent>
+          </Tooltip>
+        ) : (
+          buttonContent
+        )}
 
         {hasChildren && isExpanded && !isCollapsed && (
           <div className="ml-4 mt-1 space-y-1">
             {item.children.map(child => renderNavItem(child, level + 1))}
           </div>
         )}
-
-        {item.description && !isCollapsed && (
-          <p className="text-xs text-muted-foreground ml-7 mt-1">
-            {item.description}
-          </p>
-        )}
       </div>
     )
   }
 
   return (
-    <div className={cn("flex flex-col h-full bg-background border-r", className)}>
+    <TooltipProvider>
+      <div className={cn("flex flex-col h-full bg-background border-r", className)}>
       {/* Header */}
       <div className="p-4 border-b">
         <div className="flex items-center justify-between">
@@ -374,6 +388,7 @@ export function SidebarNavigation({
           {!isCollapsed && "Cerrar Sesión"}
         </Button>
       </div>
-    </div>
+      </div>
+    </TooltipProvider>
   )
 }
