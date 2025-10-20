@@ -7,7 +7,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { ResponsiveContainer } from '@/components/ui/responsive-container';
+import { SidebarLayout } from '@/components/layout/sidebar-layout';
+import { SidebarProvider } from '@/hooks/use-sidebar';
 import { ThemeToggle } from '@/components/theme/theme-toggle';
 import { KeyboardShortcutsPanel } from '@/components/help/keyboard-shortcuts-panel';
 import { useKeyboardShortcuts, commonShortcuts } from '@/hooks/use-keyboard-shortcuts';
@@ -17,8 +18,6 @@ import {
   Users,
   FileText,
   Settings,
-  LogOut,
-  User,
   BarChart3,
   AlertTriangle,
   Clock,
@@ -80,59 +79,40 @@ export default function DashboardPage() {
 
   return (
     <ProtectedRoute>
-      <div className="min-h-screen bg-background">
-        {/* Header */}
-        <header className="bg-card shadow-sm border-b sticky top-0 z-10">
-          <ResponsiveContainer size="xl">
-            <div className="flex justify-between items-center h-16">
-              <div className="flex items-center space-x-4">
-                <Building2 className="h-8 w-8 text-primary" />
-                <div>
-                  <h1 className="text-xl font-bold text-foreground">Plataforma MOPC</h1>
-                  <p className="text-xs text-muted-foreground">Sistema de Gestión de Casos de Expropiación</p>
-                </div>
-              </div>
-              <div className="flex items-center space-x-4">
-                <GlobalSearch />
-                <DataExport />
-                <ThemeToggle />
-                <KeyboardShortcutsPanel
-                  shortcuts={shortcuts.map(s => ({ ...s, category: 'Navegación' }))}
-                >
-                  <Button variant="ghost" size="sm" aria-label="Atajos de teclado">
-                    <Keyboard className="h-4 w-4" />
-                  </Button>
-                </KeyboardShortcutsPanel>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => startTutorial('dashboard-intro')}
-                  aria-label="Iniciar tutorial"
-                >
-                  <HelpCircle className="h-4 w-4" />
-                </Button>
-                <div className="text-right">
-                  <p className="text-sm font-medium text-foreground">{user?.name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {user?.role} - {user?.department}
-                  </p>
-                </div>
-                <Button
-                  onClick={signOut}
-                  variant="outline"
-                  size="sm"
-                >
-                  <LogOut className="h-4 w-4 mr-2" />
-                  Cerrar sesión
-                </Button>
-              </div>
+      <SidebarProvider>
+        <SidebarLayout>
+        <div className="p-6 lg:p-8 space-y-6">
+          {/* Top Bar with utilities */}
+          <div className="flex justify-between items-center mb-6">
+            <div>
+              <h1 className="text-2xl lg:text-3xl font-bold text-foreground">
+                Panel Principal
+              </h1>
+              <p className="text-muted-foreground">
+                Sistema de Gestión de Casos de Expropiación
+              </p>
             </div>
-          </ResponsiveContainer>
-        </header>
-
-        {/* Main Content */}
-        <main className="flex-1">
-          <ResponsiveContainer size="xl" padding="lg">
+            <div className="flex items-center space-x-2">
+              <GlobalSearch />
+              <DataExport />
+              <ThemeToggle />
+              <KeyboardShortcutsPanel
+                shortcuts={shortcuts.map(s => ({ ...s, category: 'Navegación' }))}
+              >
+                <Button variant="ghost" size="sm" aria-label="Atajos de teclado">
+                  <Keyboard className="h-4 w-4" />
+                </Button>
+              </KeyboardShortcutsPanel>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => startTutorial('dashboard-intro')}
+                aria-label="Iniciar tutorial"
+              >
+                <HelpCircle className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
             {/* Welcome Section */}
             <section className="mb-8" aria-labelledby="welcome-heading">
               <div className="flex items-center justify-between flex-col sm:flex-row gap-4">
@@ -356,9 +336,9 @@ export default function DashboardPage() {
                 />
               </TabsContent>
             </Tabs>
-          </ResponsiveContainer>
-        </main>
-      </div>
+        </div>
+      </SidebarLayout>
+      </SidebarProvider>
     </ProtectedRoute>
   );
 }
