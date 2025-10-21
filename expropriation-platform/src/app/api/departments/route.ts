@@ -4,45 +4,7 @@ import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
 import { logActivity } from '@/lib/activity-logger';
-
-// Schema for department creation
-const createDepartmentSchema = z.object({
-  name: z.string().min(1, 'El nombre del departamento es requerido'),
-  code: z.string().min(1, 'El código del departamento es requerido'),
-  parentId: z.string().optional(),
-  description: z.string().optional(),
-  headUserId: z.string().optional(),
-  contactInfo: z.object({
-    email: z.string().email().optional(),
-    phone: z.string().optional(),
-    address: z.string().optional(),
-  }).optional(),
-  location: z.object({
-    building: z.string().optional(),
-    floor: z.string().optional(),
-    office: z.string().optional(),
-    coordinates: z.object({
-      lat: z.number().optional(),
-      lng: z.number().optional(),
-    }).optional(),
-  }).optional(),
-  type: z.string().optional(),
-  isActive: z.boolean().default(true),
-  userCapacity: z.number().positive().optional(),
-  budget: z.number().positive().optional(),
-  operatingHours: z.object({
-    monday: z.string().optional(),
-    tuesday: z.string().optional(),
-    wednesday: z.string().optional(),
-    thursday: z.string().optional(),
-    friday: z.string().optional(),
-    saturday: z.string().optional(),
-    sunday: z.string().optional(),
-  }).optional(),
-});
-
-// Schema for department updates
-const updateDepartmentSchema = createDepartmentSchema.partial();
+import { departmentSchema, updateDepartmentSchema } from '@/lib/validators/department-validator';
 
 // GET /api/departments - List departments with filtering and hierarchy
 export async function GET(request: NextRequest) {
@@ -163,7 +125,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const validatedData = createDepartmentSchema.parse(body);
+    const validatedData = departmentSchema.parse(body);
 
     // Check if department code already exists
     const existingDept = await prisma.department.findUnique({
@@ -190,13 +152,9 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // Prevent circular reference
-      if (validatedData.parentId === validatedData.parentId) {
-        return NextResponse.json(
-          { error: 'Un departamento no puede ser su propio padre' },
-          { status: 400 }
-        );
-      }
+      // Note: Circular reference check for self-parent is not needed during creation
+      // This check would be relevant during updates when trying to set a department
+      // as its own parent through a circular chain
     }
 
     // If headUserId is provided, validate the user exists
@@ -213,42 +171,57 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Create department
-    const department = await prisma.department.create({
-      data: validatedData,
-      include: {
-        parent: {
-          select: { id: true, name: true, code: true },
-        },
-        headUser: {
-          select: { id: true, firstName: true, lastName: true, email: true },
-        },
-        children: {
-          select: { id: true, name: true, code: true, isActive: true },
-        },
-        _count: {
-          select: {
-            users: true,
-            cases: true,
-            children: true,
+    // Create department with simplified schema
+    let department;
+    try {
+      // Create department directly with simplified data
+      department = await prisma.department.create({
+        data: validatedData,
+        include: {
+          parent: {
+            select: { id: true, name: true, code: true },
+          },
+          headUser: {
+            select: { id: true, firstName: true, lastName: true, email: true },
+          },
+          children: {
+            select: { id: true, name: true, code: true, isActive: true },
+          },
+          _count: {
+            select: {
+              users: true,
+              cases: true,
+              children: true,
+            },
           },
         },
-      },
-    });
+      });
+    } catch (dbError) {
+      console.error('Database error creating department:', dbError);
+      return NextResponse.json(
+        { error: 'Error de base de datos al crear departamento' },
+        { status: 500 }
+      );
+    }
 
     // Log activity
-    await logActivity({
-      userId: session.user.id,
-      action: 'CREATED',
-      entityType: 'department',
-      entityId: department.id,
-      description: `Departamento creado: ${department.name}`,
-      metadata: {
-        departmentName: department.name,
-        departmentCode: department.code,
-        parentDepartment: department.parent?.name || 'Ninguno',
-      },
-    });
+    try {
+      await logActivity({
+        userId: session.user.id,
+        action: 'CREATED',
+        entityType: 'department',
+        entityId: department.id,
+        description: `Departamento creado: ${department.name}`,
+        metadata: {
+          departmentName: department.name,
+          departmentCode: department.code,
+          parentDepartment: department.parent?.name || 'Ninguno',
+        },
+      });
+    } catch (logError) {
+      console.error('Error logging department creation:', logError);
+      // Don't fail the request if logging fails
+    }
 
     // Remove sensitive data and format response
     const sanitizedDepartment = {

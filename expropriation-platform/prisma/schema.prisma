@@ -485,21 +485,10 @@ model Department {
   // Department details
   description String?
   headUserId  String?    // Department head/manager
-  contactInfo Json?      // Contact information (email, phone, address)
-  location    Json?      // Physical location details
-  type        String?    // Department type/classification
+  email       String?    // Department email address
 
   // Status management
   isActive      Boolean @default(true)
-  isSuspended   Boolean @default(false)
-  suspensionReason String?
-  suspendedAt   DateTime?
-  suspendedBy   String?
-
-  // Statistics and metadata
-  userCapacity  Int?     // Maximum user capacity
-  budget        Float?   // Department budget
-  operatingHours Json?   // Operating hours/schedule
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -523,7 +512,6 @@ model Department {
 
   @@index([parentId])
   @@index([isActive])
-  @@index([isSuspended])
   @@index([headUserId])
   @@index([code])
   @@map("departments")

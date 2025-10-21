@@ -15,6 +15,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { toast } from 'react-hot-toast';
+import { Department, User } from '@/lib/types/department';
 import {
   Users,
   ArrowRightLeft,
@@ -41,29 +42,6 @@ const transferSchema = z.object({
 });
 
 type TransferFormData = z.infer<typeof transferSchema>;
-
-interface User {
-  id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  username: string;
-  role: {
-    id: string;
-    name: string;
-  };
-  isActive: boolean;
-  isSuspended: boolean;
-  createdAt: string;
-}
-
-interface Department {
-  id: string;
-  name: string;
-  code: string;
-  isActive: boolean;
-  userCount: number;
-}
 
 interface UserTransferProps {
   sourceDepartmentId: string;
@@ -308,7 +286,7 @@ export function UserTransfer({
                         <div className="flex items-center justify-between w-full">
                           <span>{dept.name}</span>
                           <Badge variant="outline" className="text-xs ml-2">
-                            {dept.userCount} usuarios
+                            {dept.userCount || 0} usuarios
                           </Badge>
                         </div>
                       </SelectItem>

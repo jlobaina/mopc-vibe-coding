@@ -5,7 +5,6 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -18,12 +17,9 @@ import { UserTransfer } from '@/components/departments/user-transfer';
 import {
   Building,
   Plus,
-  Search,
-  Filter,
   RefreshCw,
   Eye,
   Edit,
-  Trash2,
   Users,
   BarChart3,
   ArrowRightLeft,
@@ -31,57 +27,9 @@ import {
   AlertTriangle,
   CheckCircle2,
   XCircle,
-  Clock,
-  TrendingUp,
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
-
-// Types
-interface Department {
-  id: string;
-  name: string;
-  code: string;
-  description?: string | null;
-  parentId?: string | null;
-  isActive: boolean;
-  isSuspended?: boolean;
-  userCount: number;
-  caseCount: number;
-  childCount: number;
-  headUser?: {
-    id: string;
-    firstName: string;
-    lastName: string;
-    email: string;
-  } | null;
-  children?: Department[];
-  parent?: {
-    id: string;
-    name: string;
-    code: string;
-  } | null;
-  contactInfo?: any;
-  location?: any;
-  type?: string | null;
-  userCapacity?: number | null;
-  budget?: number | null;
-  operatingHours?: any;
-}
-
-interface User {
-  id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  username: string;
-  role: {
-    id: string;
-    name: string;
-  };
-  isActive: boolean;
-  isSuspended: boolean;
-  createdAt: string;
-}
+import { Department, User } from '@/lib/types/department';
 
 export default function DepartmentsManagementPage() {
   const { data: session, status } = useSession();
@@ -90,8 +38,7 @@ export default function DepartmentsManagementPage() {
   const [loading, setLoading] = useState(true);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [users, setUsers] = useState<User[]>([]);
-  const [selectedDepartment, setSelectedDepartment] = useState<Department | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedDepartment, setSelectedDepartment] = useState<Department | undefined>();
   const [activeTab, setActiveTab] = useState('tree');
 
   // Dialog states
@@ -102,7 +49,7 @@ export default function DepartmentsManagementPage() {
   const [showTransferDialog, setShowTransferDialog] = useState(false);
 
   // Form states
-  const [createParentId, setCreateParentId] = useState<string | null>(null);
+  const [createParentId, setCreateParentId] = useState<string | undefined>();
 
   // Check authentication and permissions
   useEffect(() => {
@@ -156,24 +103,42 @@ export default function DepartmentsManagementPage() {
 
   const handleCreateDepartment = async (departmentData: any) => {
     try {
+      console.log('Creating department with data:', departmentData);
+
       const response = await fetch('/api/departments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(departmentData),
       });
 
+      console.log('Department creation response status:', response.status);
+
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || 'Error al crear departamento');
+        console.error('Department creation error:', error);
+
+        // Provide more specific error messages
+        let errorMessage = 'Error al crear departamento';
+        if (error.details && Array.isArray(error.details)) {
+          errorMessage = error.details.map((detail: any) => detail.message).join(', ');
+        } else if (error.error) {
+          errorMessage = error.error;
+        }
+
+        throw new Error(errorMessage);
       }
 
       const newDepartment = await response.json();
+      console.log('Department created successfully:', newDepartment);
+
       toast.success('Departamento creado correctamente');
       setShowCreateDialog(false);
-      setCreateParentId(null);
+      setCreateParentId(undefined);
       await fetchDepartments();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Error al crear departamento');
+      console.error('Department creation failed:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Error al crear departamento';
+      toast.error(errorMessage);
       throw error;
     }
   };
@@ -196,7 +161,7 @@ export default function DepartmentsManagementPage() {
       const updatedDepartment = await response.json();
       toast.success('Departamento actualizado correctamente');
       setShowEditDialog(false);
-      setSelectedDepartment(null);
+      setSelectedDepartment(undefined);
       await fetchDepartments();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Error al actualizar departamento');
@@ -219,7 +184,7 @@ export default function DepartmentsManagementPage() {
 
       toast.success('Departamento eliminado correctamente');
       setShowDeleteDialog(false);
-      setSelectedDepartment(null);
+      setSelectedDepartment(undefined);
       await fetchDepartments();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Error al eliminar departamento');
@@ -241,8 +206,8 @@ export default function DepartmentsManagementPage() {
     active: departments.filter(d => d.isActive).length,
     inactive: departments.filter(d => !d.isActive).length,
     suspended: departments.filter(d => d.isSuspended).length,
-    totalUsers: departments.reduce((sum, d) => sum + d.userCount, 0),
-    totalCases: departments.reduce((sum, d) => sum + d.caseCount, 0),
+    totalUsers: departments.reduce((sum, d) => sum + (d.userCount || 0), 0),
+    totalCases: departments.reduce((sum, d) => sum + (d.caseCount || 0), 0),
   };
 
   if (loading) {
@@ -379,7 +344,7 @@ export default function DepartmentsManagementPage() {
                   setSelectedDepartment(dept);
                   setShowDeleteDialog(true);
                 }}
-                selectedDepartmentId={selectedDepartment?.id}
+                {...(selectedDepartment && { selectedDepartmentId: selectedDepartment.id })}
                 loading={loading}
                 actions={true}
               />
@@ -666,7 +631,7 @@ export default function DepartmentsManagementPage() {
             onSubmit={handleCreateDepartment}
             onCancel={() => {
               setShowCreateDialog(false);
-              setCreateParentId(null);
+              setCreateParentId(undefined);
             }}
           />
         </DialogContent>
@@ -687,7 +652,7 @@ export default function DepartmentsManagementPage() {
               onSubmit={handleUpdateDepartment}
               onCancel={() => {
                 setShowEditDialog(false);
-                setSelectedDepartment(null);
+                setSelectedDepartment(undefined);
               }}
             />
           )}
@@ -700,7 +665,7 @@ export default function DepartmentsManagementPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta acción eliminará permanentemente el departamento "{selectedDepartment?.name}".
+              Esta acción eliminará permanentemente el departamento &quot;{selectedDepartment?.name}&quot;.
               Esta acción no se puede deshacer.
             </AlertDialogDescription>
           </AlertDialogHeader>
