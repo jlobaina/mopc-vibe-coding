@@ -123,10 +123,10 @@ export async function GET(request: NextRequest) {
 
     if (query.search) {
       where.OR = [
-        { title: { contains: query.search, mode: 'insensitive' } },
-        { description: { contains: query.search, mode: 'insensitive' } },
-        { fileName: { contains: query.search, mode: 'insensitive' } },
-        { contentText: { contains: query.search, mode: 'insensitive' } },
+        { title: { contains: query.search } },
+        { description: { contains: query.search } },
+        { fileName: { contains: query.search } },
+        { contentText: { contains: query.search } },
       ];
     }
 
@@ -137,7 +137,7 @@ export async function GET(request: NextRequest) {
     if (query.caseId) where.caseId = query.caseId;
     if (query.uploadedById) where.uploadedById = query.uploadedById;
     if (query.tags) {
-      where.tags = { contains: query.tags, mode: 'insensitive' };
+      where.tags = { contains: query.tags };
     }
 
     // Date range filtering

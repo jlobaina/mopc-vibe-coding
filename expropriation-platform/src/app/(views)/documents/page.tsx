@@ -18,14 +18,11 @@ import {
   Plus,
   Filter
 } from 'lucide-react';
-import { DocumentType } from '@prisma/client';
-import { getDocumentTypeTranslation } from '@/lib/document-constants';
 import { toast } from 'react-hot-toast';
 
 export default function DocumentsPage() {
   const [activeTab, setActiveTab] = useState('upload');
   const [selectedDocument, setSelectedDocument] = useState<any>(null);
-  const [searchResults, setSearchResults] = useState<any[]>([]);
 
   const handleUploadComplete = (documents: any[]) => {
     toast.success(`${documents.length} documento(s) cargados exitosamente`);
@@ -79,7 +76,6 @@ export default function DocumentsPage() {
           <div className="space-y-6">
             {/* Search Interface */}
             <DocumentSearch
-              onResults={setSearchResults}
               onResultSelect={handleDocumentSelect}
             />
 
@@ -99,58 +95,7 @@ export default function DocumentsPage() {
               </div>
             )}
 
-            {/* Search Results Summary */}
-            {searchResults.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Resultados de Búsqueda</CardTitle>
-                  <CardDescription>
-                    {searchResults.length} documentos encontrados. Haga clic en cualquier documento para una vista previa.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {searchResults.slice(0, 6).map((doc) => (
-                      <Card
-                        key={doc.id}
-                        className="cursor-pointer hover:shadow-md transition-shadow"
-                        onClick={() => handleDocumentSelect(doc)}
-                      >
-                        <CardContent className="p-4">
-                          <div className="space-y-2">
-                            <h4 className="font-medium text-sm line-clamp-1">{doc.title}</h4>
-                            <p className="text-xs text-gray-600 line-clamp-2">
-                              {doc.description}
-                            </p>
-                            <div className="flex items-center justify-between">
-                              <Badge variant="secondary" className="text-xs">
-                                {getDocumentTypeTranslation(doc.documentType)}
-                              </Badge>
-                              <span className="text-xs text-gray-500">
-                                {doc.fileSizeFormatted}
-                              </span>
-                            </div>
-                            <div className="flex items-center space-x-2 text-xs text-gray-500">
-                              <span>{doc.uploadedBy?.fullName}</span>
-                              <span>•</span>
-                              <span>{new Date(doc.createdAt).toLocaleDateString()}</span>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                  {searchResults.length > 6 && (
-                    <div className="text-center mt-4">
-                      <Button variant="outline">
-                        Ver los {searchResults.length} resultados
-                      </Button>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            )}
-          </div>
+            </div>
         </TabsContent>
 
         {/* Templates Tab */}

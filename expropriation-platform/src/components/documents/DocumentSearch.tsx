@@ -19,7 +19,6 @@ import {
   ChevronDown,
   ChevronUp
 } from 'lucide-react';
-import { debounce } from 'lodash-es';
 import { toast } from 'react-hot-toast';
 import {
   DocumentType,
@@ -34,7 +33,6 @@ import {
 } from '@/lib/document-constants';
 
 interface DocumentSearchProps {
-  onResults?: (results: any[]) => void;
   onResultSelect?: (document: any) => void;
   compact?: boolean;
   initialQuery?: string;
@@ -81,7 +79,6 @@ interface SearchResults {
 }
 
 export function DocumentSearch({
-  onResults,
   onResultSelect,
   compact = false,
   initialQuery = ''
@@ -90,8 +87,6 @@ export function DocumentSearch({
   const [results, setResults] = useState<SearchResults | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
-  const [suggestions, setSuggestions] = useState<string[]>([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
 
   const [filters, setFilters] = useState<SearchFilters>({
     documentTypes: [],
@@ -118,35 +113,10 @@ export function DocumentSearch({
     limit: 20,
   });
 
-  // Debounced search function
-  const debouncedSearch = useCallback(
-    debounce(async (searchQuery: string) => {
-      if (searchQuery.length < 2) {
-        setSuggestions([]);
-        setShowSuggestions(false);
-        return;
-      }
-
-      try {
-        const response = await fetch(
-          `/api/documents/search/suggestions?q=${encodeURIComponent(searchQuery)}&limit=10`
-        );
-        if (response.ok) {
-          const data = await response.json();
-          setSuggestions(data.suggestions);
-          setShowSuggestions(true);
-        }
-      } catch (error) {
-        console.error('Error fetching suggestions:', error);
-      }
-    }, 300),
-    []
-  );
-
+  
   // Handle query change
   const handleQueryChange = (value: string) => {
     setQuery(value);
-    debouncedSearch(value);
     setPagination({ ...pagination, page: 1 });
   };
 
@@ -174,7 +144,6 @@ export function DocumentSearch({
       if (response.ok) {
         const data: SearchResults = await response.json();
         setResults(data);
-        onResults?.(data.results);
       } else {
         const error = await response.json();
         toast.error(error.error || 'La búsqueda falló');
@@ -184,7 +153,7 @@ export function DocumentSearch({
     } finally {
       setIsLoading(false);
     }
-  }, [query, filters, sort, pagination, onResults]);
+  }, [query, filters, sort, pagination]);
 
   // Get active filters (non-empty values)
   const getActiveFilters = () => {
@@ -673,24 +642,6 @@ export function DocumentSearch({
                   </Button>
                 </div>
               </div>
-
-              {/* Suggestions */}
-              {showSuggestions && suggestions.length > 0 && (
-                <div className="absolute z-10 w-full bg-white border rounded-md shadow-lg">
-                  {suggestions.map((suggestion, index) => (
-                    <div
-                      key={index}
-                      className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm"
-                      onClick={() => {
-                        setQuery(suggestion);
-                        setShowSuggestions(false);
-                      }}
-                    >
-                      {suggestion}
-                    </div>
-                  ))}
-                </div>
-              )}
 
               {/* Quick Filters */}
               {getActiveFilterCount() > 0 && (
