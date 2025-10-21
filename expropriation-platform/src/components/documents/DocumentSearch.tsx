@@ -8,22 +8,14 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import {
   Search,
   Filter,
   X,
-  Calendar,
-  FileText,
-  Tag,
-  User,
   Download,
   Eye,
-  Clock,
-  BarChart3,
-  SlidersHorizontal,
   ChevronDown,
   ChevronUp
 } from 'lucide-react';
@@ -35,6 +27,11 @@ import {
   DocumentStatus,
   DocumentSecurityLevel
 } from '@prisma/client';
+import {
+  getDocumentTypeTranslation,
+  getDocumentCategoryTranslation,
+  getDocumentStatusTranslation
+} from '@/lib/document-constants';
 
 interface DocumentSearchProps {
   onResults?: (results: any[]) => void;
@@ -156,7 +153,7 @@ export function DocumentSearch({
   // Perform search
   const performSearch = useCallback(async () => {
     if (query.trim().length === 0) {
-      toast.error('Please enter a search query');
+      toast.error('Por favor ingresa un término de búsqueda');
       return;
     }
 
@@ -180,10 +177,10 @@ export function DocumentSearch({
         onResults?.(data.results);
       } else {
         const error = await response.json();
-        toast.error(error.error || 'Search failed');
+        toast.error(error.error || 'La búsqueda falló');
       }
     } catch (error) {
-      toast.error('Failed to perform search');
+      toast.error('No se pudo realizar la búsqueda');
     } finally {
       setIsLoading(false);
     }
@@ -293,9 +290,9 @@ export function DocumentSearch({
     <Card className="w-80 h-fit">
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle className="text-lg">Filters</CardTitle>
+          <CardTitle className="text-lg">Filtros</CardTitle>
           <Button variant="ghost" size="sm" onClick={clearFilters}>
-            Clear All
+            Limpiar Todo
           </Button>
         </div>
       </CardHeader>
@@ -303,7 +300,7 @@ export function DocumentSearch({
         <ScrollArea className="h-96">
           {/* Document Types */}
           <div className="space-y-3">
-            <Label className="text-sm font-medium">Document Types</Label>
+            <Label className="text-sm font-medium">Tipos de Documento</Label>
             <div className="space-y-2">
               {Object.values(DocumentType).map((type) => (
                 <div key={type} className="flex items-center space-x-2">
@@ -325,7 +322,7 @@ export function DocumentSearch({
                     }}
                   />
                   <Label htmlFor={`type-${type}`} className="text-sm">
-                    {type.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
+                    {getDocumentTypeTranslation(type)}
                   </Label>
                 </div>
               ))}
@@ -336,7 +333,7 @@ export function DocumentSearch({
 
           {/* Categories */}
           <div className="space-y-3">
-            <Label className="text-sm font-medium">Categories</Label>
+            <Label className="text-sm font-medium">Categorías</Label>
             <div className="space-y-2">
               {Object.values(DocumentCategory).map((category) => (
                 <div key={category} className="flex items-center space-x-2">
@@ -358,7 +355,7 @@ export function DocumentSearch({
                     }}
                   />
                   <Label htmlFor={`category-${category}`} className="text-sm">
-                    {category.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
+                    {getDocumentCategoryTranslation(category)}
                   </Label>
                 </div>
               ))}
@@ -369,7 +366,7 @@ export function DocumentSearch({
 
           {/* Status */}
           <div className="space-y-3">
-            <Label className="text-sm font-medium">Status</Label>
+            <Label className="text-sm font-medium">Estado</Label>
             <div className="space-y-2">
               {Object.values(DocumentStatus).map((status) => (
                 <div key={status} className="flex items-center space-x-2">
@@ -391,7 +388,7 @@ export function DocumentSearch({
                     }}
                   />
                   <Label htmlFor={`status-${status}`} className="text-sm">
-                    {status.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
+                    {getDocumentStatusTranslation(status)}
                   </Label>
                 </div>
               ))}
@@ -402,11 +399,11 @@ export function DocumentSearch({
 
           {/* Date Range */}
           <div className="space-y-3">
-            <Label className="text-sm font-medium">Date Range</Label>
+            <Label className="text-sm font-medium">Rango de Fechas</Label>
             <div className="space-y-2">
               <Input
                 type="date"
-                placeholder="From"
+                placeholder="Desde"
                 value={filters.dateRange.from}
                 onChange={(e) =>
                   setFilters({
@@ -417,7 +414,7 @@ export function DocumentSearch({
               />
               <Input
                 type="date"
-                placeholder="To"
+                placeholder="Hasta"
                 value={filters.dateRange.to}
                 onChange={(e) =>
                   setFilters({
@@ -433,7 +430,7 @@ export function DocumentSearch({
 
           {/* Additional Filters */}
           <div className="space-y-3">
-            <Label className="text-sm font-medium">Additional Filters</Label>
+            <Label className="text-sm font-medium">Filtros Adicionales</Label>
             <div className="space-y-2">
               <div className="flex items-center space-x-2">
                 <Checkbox
@@ -447,7 +444,7 @@ export function DocumentSearch({
                   }
                 />
                 <Label htmlFor="hasVersions" className="text-sm">
-                  Has versions
+                  Tiene versiones
                 </Label>
               </div>
               <div className="flex items-center space-x-2">
@@ -462,7 +459,7 @@ export function DocumentSearch({
                   }
                 />
                 <Label htmlFor="hasSignatures" className="text-sm">
-                  Has signatures
+                  Tiene firmas
                 </Label>
               </div>
               <div className="flex items-center space-x-2">
@@ -477,7 +474,7 @@ export function DocumentSearch({
                   }
                 />
                 <Label htmlFor="isExpired" className="text-sm">
-                  Is expired
+                  Está vencido
                 </Label>
               </div>
             </div>
@@ -496,9 +493,9 @@ export function DocumentSearch({
         {/* Results Summary */}
         <div className="flex items-center justify-between">
           <div className="text-sm text-gray-600">
-            Found {results.pagination.total} results
+            Se encontraron {results.pagination.total} resultados
             {results.search.query && (
-              <span> for "{results.search.query}"</span>
+              <span> para "{results.search.query}"</span>
             )}
           </div>
           <div className="flex items-center space-x-2">
@@ -507,11 +504,11 @@ export function DocumentSearch({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="relevance">Relevance</SelectItem>
-                <SelectItem value="createdAt">Date</SelectItem>
-                <SelectItem value="title">Title</SelectItem>
-                <SelectItem value="fileSize">Size</SelectItem>
-                <SelectItem value="downloadCount">Downloads</SelectItem>
+                <SelectItem value="relevance">Relevancia</SelectItem>
+                <SelectItem value="createdAt">Fecha</SelectItem>
+                <SelectItem value="title">Título</SelectItem>
+                <SelectItem value="fileSize">Tamaño</SelectItem>
+                <SelectItem value="downloadCount">Descargas</SelectItem>
               </SelectContent>
             </Select>
             <Button
@@ -566,10 +563,10 @@ export function DocumentSearch({
                     </div>
                     <div className="flex items-center space-x-2">
                       <Badge variant="outline">
-                        {document.documentType.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
+                        {getDocumentTypeTranslation(document.documentType)}
                       </Badge>
                       <Badge variant="secondary">
-                        {document.category.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
+                        {getDocumentCategoryTranslation(document.category)}
                       </Badge>
                       {document.tags.map((tag: any) => (
                         <Badge key={tag.id} variant="outline" className="text-xs">
@@ -601,10 +598,10 @@ export function DocumentSearch({
               disabled={results.pagination.page === 1}
               onClick={() => handlePageChange(results.pagination.page - 1)}
             >
-              Previous
+              Anterior
             </Button>
             <span className="text-sm text-gray-600">
-              Page {results.pagination.page} of {results.pagination.pages}
+              Página {results.pagination.page} de {results.pagination.pages}
             </span>
             <Button
               variant="outline"
@@ -612,7 +609,7 @@ export function DocumentSearch({
               disabled={results.pagination.page === results.pagination.pages}
               onClick={() => handlePageChange(results.pagination.page + 1)}
             >
-              Next
+              Siguiente
             </Button>
           </div>
         )}
@@ -634,9 +631,9 @@ export function DocumentSearch({
         <div className={compact ? '' : 'lg:col-span-3'}>
           <Card>
             <CardHeader>
-              <CardTitle>Document Search</CardTitle>
+              <CardTitle>Búsqueda de Documentos</CardTitle>
               <CardDescription>
-                Search through all documents using advanced filters
+                Busca en todos los documentos usando filtros avanzados
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -644,7 +641,7 @@ export function DocumentSearch({
               <div className="relative">
                 <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                 <Input
-                  placeholder="Search documents..."
+                  placeholder="Buscar documentos..."
                   value={query}
                   onChange={(e) => handleQueryChange(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && performSearch()}
@@ -653,7 +650,7 @@ export function DocumentSearch({
                 <div className="absolute right-2 top-2 flex items-center space-x-1">
                   {getActiveFilterCount() > 0 && (
                     <Badge variant="secondary" className="text-xs">
-                      {getActiveFilterCount()} filters
+                      {getActiveFilterCount()} filtros
                     </Badge>
                   )}
                   <Button
@@ -698,10 +695,10 @@ export function DocumentSearch({
               {/* Quick Filters */}
               {getActiveFilterCount() > 0 && (
                 <div className="flex items-center space-x-2">
-                  <span className="text-sm text-gray-500">Active filters:</span>
+                  <span className="text-sm text-gray-500">Filtros activos:</span>
                   {filters.documentTypes.map((type) => (
                     <Badge key={type} variant="secondary" className="text-xs">
-                      {type.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
+                      {getDocumentTypeTranslation(type)}
                       <Button
                         variant="ghost"
                         size="sm"
@@ -719,7 +716,7 @@ export function DocumentSearch({
                   ))}
                   {filters.categories.map((category) => (
                     <Badge key={category} variant="secondary" className="text-xs">
-                      {category.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
+                      {getDocumentCategoryTranslation(category)}
                       <Button
                         variant="ghost"
                         size="sm"
@@ -736,7 +733,7 @@ export function DocumentSearch({
                     </Badge>
                   ))}
                   <Button variant="ghost" size="sm" onClick={clearFilters}>
-                    Clear all
+                    Limpiar todo
                   </Button>
                 </div>
               )}

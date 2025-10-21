@@ -18,6 +18,8 @@ import {
   Plus,
   Filter
 } from 'lucide-react';
+import { DocumentType } from '@prisma/client';
+import { getDocumentTypeTranslation } from '@/lib/document-constants';
 import { toast } from 'react-hot-toast';
 
 export default function DocumentsPage() {
@@ -26,7 +28,7 @@ export default function DocumentsPage() {
   const [searchResults, setSearchResults] = useState<any[]>([]);
 
   const handleUploadComplete = (documents: any[]) => {
-    toast.success(`${documents.length} document(s) uploaded successfully`);
+    toast.success(`${documents.length} documento(s) cargados exitosamente`);
     setActiveTab('search');
   };
 
@@ -41,9 +43,9 @@ export default function DocumentsPage() {
   return (
     <div className="container mx-auto py-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Document Management</h1>
+        <h1 className="text-3xl font-bold mb-2">Gestión de Documentos</h1>
         <p className="text-gray-600">
-          Upload, organize, search, and manage all your documents with advanced features
+          Suba, organice, busque y administre todos sus documentos con funciones avanzadas
         </p>
       </div>
 
@@ -51,38 +53,25 @@ export default function DocumentsPage() {
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="upload" className="flex items-center space-x-2">
             <Upload className="h-4 w-4" />
-            <span>Upload</span>
+            <span>Subir Documentos</span>
           </TabsTrigger>
           <TabsTrigger value="search" className="flex items-center space-x-2">
             <Search className="h-4 w-4" />
-            <span>Search</span>
+            <span>Buscar</span>
           </TabsTrigger>
           <TabsTrigger value="templates" className="flex items-center space-x-2">
             <FileText className="h-4 w-4" />
-            <span>Templates</span>
+            <span>Plantillas</span>
           </TabsTrigger>
           <TabsTrigger value="manage" className="flex items-center space-x-2">
             <Settings className="h-4 w-4" />
-            <span>Manage</span>
+            <span>Administrar</span>
           </TabsTrigger>
         </TabsList>
 
         {/* Upload Tab */}
         <TabsContent value="upload">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Upload className="h-5 w-5" />
-                <span>Upload Documents</span>
-              </CardTitle>
-              <CardDescription>
-                Upload one or multiple documents with metadata, categorization, and security settings
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <DocumentUpload onUploadComplete={handleUploadComplete} maxFiles={10} />
-            </CardContent>
-          </Card>
+          <DocumentUpload onUploadComplete={handleUploadComplete} maxFiles={10} />
         </TabsContent>
 
         {/* Search Tab */}
@@ -98,9 +87,9 @@ export default function DocumentsPage() {
             {selectedDocument && (
               <div className="mt-6">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold">Document Preview</h3>
+                  <h3 className="text-lg font-semibold">Vista Previa del Documento</h3>
                   <Button variant="outline" onClick={handleCloseViewer}>
-                    Close
+                    Cerrar
                   </Button>
                 </div>
                 <DocumentViewer
@@ -114,9 +103,9 @@ export default function DocumentsPage() {
             {searchResults.length > 0 && (
               <Card>
                 <CardHeader>
-                  <CardTitle>Search Results</CardTitle>
+                  <CardTitle>Resultados de Búsqueda</CardTitle>
                   <CardDescription>
-                    {searchResults.length} documents found. Click on any document to preview.
+                    {searchResults.length} documentos encontrados. Haga clic en cualquier documento para una vista previa.
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -135,7 +124,7 @@ export default function DocumentsPage() {
                             </p>
                             <div className="flex items-center justify-between">
                               <Badge variant="secondary" className="text-xs">
-                                {doc.documentType.replace(/_/g, ' ')}
+                                {getDocumentTypeTranslation(doc.documentType)}
                               </Badge>
                               <span className="text-xs text-gray-500">
                                 {doc.fileSizeFormatted}
@@ -154,7 +143,7 @@ export default function DocumentsPage() {
                   {searchResults.length > 6 && (
                     <div className="text-center mt-4">
                       <Button variant="outline">
-                        View All {searchResults.length} Results
+                        Ver los {searchResults.length} resultados
                       </Button>
                     </div>
                   )}
@@ -173,40 +162,40 @@ export default function DocumentsPage() {
                 <CardTitle className="flex items-center justify-between">
                   <span className="flex items-center space-x-2">
                     <FileText className="h-5 w-5" />
-                    <span>Document Templates</span>
+                    <span>Plantillas de documentos</span>
                   </span>
                   <Button size="sm">
                     <Plus className="h-4 w-4 mr-2" />
-                    New Template
+                    Nueva plantilla
                   </Button>
                 </CardTitle>
                 <CardDescription>
-                  Create and manage document templates for standardized documentation
+                  Crea y administra plantillas de documentos para documentación estandarizada
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   {[
                     {
-                      name: 'Legal Agreement Template',
+                      name: 'Plantilla de Acuerdo Legal',
                       type: 'LEGAL_TEMPLATE',
-                      description: 'Standard legal agreement template',
+                      description: 'Plantilla estándar de acuerdo legal',
                       usage: 24,
-                      lastUsed: '2 days ago',
+                      lastUsed: 'hace 2 días',
                     },
                     {
-                      name: 'Technical Report Template',
+                      name: 'Plantilla de Informe Técnico',
                       type: 'TECHNICAL_REPORT',
-                      description: 'Technical analysis report template',
+                      description: 'Plantilla de informe de análisis técnico',
                       usage: 18,
-                      lastUsed: '1 week ago',
+                      lastUsed: 'hace 1 semana',
                     },
                     {
-                      name: 'Meeting Minutes Template',
+                      name: 'Plantilla de Acta de Reunión',
                       type: 'FORM_TEMPLATE',
-                      description: 'Meeting minutes and action items template',
+                      description: 'Plantilla de actas y elementos de acción de reuniones',
                       usage: 45,
-                      lastUsed: '3 hours ago',
+                      lastUsed: 'hace 3 horas',
                     },
                   ].map((template, index) => (
                     <Card key={index} className="cursor-pointer hover:shadow-md transition-shadow">
@@ -216,8 +205,8 @@ export default function DocumentsPage() {
                             <h4 className="font-medium text-sm">{template.name}</h4>
                             <p className="text-xs text-gray-600">{template.description}</p>
                             <div className="flex items-center space-x-4 text-xs text-gray-500">
-                              <span>Used {template.usage} times</span>
-                              <span>Last used {template.lastUsed}</span>
+                              <span>Usado {template.usage} veces</span>
+                              <span>Usado por última vez {template.lastUsed}</span>
                             </div>
                           </div>
                           <div className="flex space-x-1">
@@ -239,20 +228,20 @@ export default function DocumentsPage() {
             {/* Template Categories */}
             <Card>
               <CardHeader>
-                <CardTitle>Template Categories</CardTitle>
+                <CardTitle>Categorías de Plantillas</CardTitle>
                 <CardDescription>
-                  Browse templates by category and type
+                  Explora plantillas por categoría y tipo
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   {[
-                    { category: 'Legal Templates', count: 12, icon: '⚖️' },
-                    { category: 'Technical Reports', count: 8, icon: '📊' },
-                    { category: 'Forms & Checklists', count: 15, icon: '📋' },
-                    { category: 'Letters & Memos', count: 10, icon: '📝' },
-                    { category: 'Certificates', count: 6, icon: '🏆' },
-                    { category: 'Contracts', count: 7, icon: '📄' },
+                    { category: 'Plantillas Legales', count: 12, icon: '⚖️' },
+                    { category: 'Informes Técnicos', count: 8, icon: '📊' },
+                    { category: 'Formularios y Listas', count: 15, icon: '📋' },
+                    { category: 'Cartas y Memos', count: 10, icon: '📝' },
+                    { category: 'Certificados', count: 6, icon: '🏆' },
+                    { category: 'Contratos', count: 7, icon: '📄' },
                   ].map((category, index) => (
                     <div
                       key={index}
@@ -262,7 +251,7 @@ export default function DocumentsPage() {
                         <span className="text-2xl">{category.icon}</span>
                         <div>
                           <h4 className="font-medium text-sm">{category.category}</h4>
-                          <p className="text-xs text-gray-600">{category.count} templates</p>
+                          <p className="text-xs text-gray-600">{category.count} plantillas</p>
                         </div>
                       </div>
                       <Button variant="ghost" size="sm">
@@ -284,43 +273,43 @@ export default function DocumentsPage() {
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
                   <Archive className="h-5 w-5" />
-                  <span>Storage Management</span>
+                  <span>Gestión de Almacenamiento</span>
                 </CardTitle>
                 <CardDescription>
-                  Monitor and manage document storage
+                  Monitorea y administra el almacenamiento de documentos
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <div className="flex justify-between text-sm">
-                      <span>Total Storage Used</span>
+                      <span>Almacenamiento Total Usado</span>
                       <span className="font-medium">2.4 GB</span>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-2">
                       <div className="bg-blue-500 h-2 rounded-full" style={{ width: '24%' }}></div>
                     </div>
-                    <p className="text-xs text-gray-500">24% of 10 GB allocated</p>
+                    <p className="text-xs text-gray-500">24% de 10 GB asignados</p>
                   </div>
 
                   <div className="space-y-3">
                     <div className="flex justify-between text-sm">
-                      <span>Documents</span>
+                      <span>Documentos</span>
                       <span className="font-medium">1,247</span>
                     </div>
                     <div className="flex justify-between text-sm">
-                      <span>Archived</span>
+                      <span>Archivados</span>
                       <span className="font-medium">156</span>
                     </div>
                     <div className="flex justify-between text-sm">
-                      <span>Expired</span>
+                      <span>Vencidos</span>
                       <span className="font-medium">23</span>
                     </div>
                   </div>
 
                   <Button variant="outline" className="w-full">
                     <Download className="h-4 w-4 mr-2" />
-                    Bulk Download
+                    Descarga Masiva
                   </Button>
                 </div>
               </CardContent>
@@ -329,37 +318,37 @@ export default function DocumentsPage() {
             {/* Recent Activity */}
             <Card>
               <CardHeader>
-                <CardTitle>Recent Activity</CardTitle>
+                <CardTitle>Actividad Reciente</CardTitle>
                 <CardDescription>
-                  Latest document activities
+                  Últimas actividades de documentos
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
                   {[
                     {
-                      action: 'Document uploaded',
-                      document: 'Contract_2024.pdf',
-                      user: 'John Doe',
-                      time: '2 minutes ago',
+                      action: 'Documento subido',
+                      document: 'Contrato_2024.pdf',
+                      user: 'Juan Pérez',
+                      time: 'hace 2 minutos',
                     },
                     {
-                      action: 'Document signed',
-                      document: 'Agreement_Draft.docx',
-                      user: 'Jane Smith',
-                      time: '1 hour ago',
+                      action: 'Documento firmado',
+                      document: 'Borrador_Acuerdo.docx',
+                      user: 'María García',
+                      time: 'hace 1 hora',
                     },
                     {
-                      action: 'Document shared',
-                      document: 'Report_Q4.pdf',
-                      user: 'Mike Johnson',
-                      time: '3 hours ago',
+                      action: 'Documento compartido',
+                      document: 'Informe_T4.pdf',
+                      user: 'Carlos Rodríguez',
+                      time: 'hace 3 horas',
                     },
                     {
-                      action: 'Document archived',
-                      document: 'Old_Report.pdf',
-                      user: 'Sarah Wilson',
-                      time: '1 day ago',
+                      action: 'Documento archivado',
+                      document: 'Informe_Antiguo.pdf',
+                      user: 'Ana Martínez',
+                      time: 'hace 1 día',
                     },
                   ].map((activity, index) => (
                     <div key={index} className="flex items-start space-x-3 p-2">
@@ -381,28 +370,28 @@ export default function DocumentsPage() {
             {/* Quick Actions */}
             <Card>
               <CardHeader>
-                <CardTitle>Quick Actions</CardTitle>
+                <CardTitle>Acciones Rápidas</CardTitle>
                 <CardDescription>
-                  Common document management tasks
+                  Tareas comunes de gestión de documentos
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
                   <Button variant="outline" className="w-full justify-start">
                     <Download className="h-4 w-4 mr-2" />
-                    Bulk Download
+                    Descarga Masiva
                   </Button>
                   <Button variant="outline" className="w-full justify-start">
                     <Archive className="h-4 w-4 mr-2" />
-                    Archive Old Documents
+                    Archivar Documentos Antiguos
                   </Button>
                   <Button variant="outline" className="w-full justify-start">
                     <FileText className="h-4 w-4 mr-2" />
-                    Generate Report
+                    Generar Informe
                   </Button>
                   <Button variant="outline" className="w-full justify-start">
                     <Settings className="h-4 w-4 mr-2" />
-                    System Settings
+                    Configuración del Sistema
                   </Button>
                 </div>
               </CardContent>

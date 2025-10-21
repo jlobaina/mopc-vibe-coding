@@ -45,13 +45,13 @@ interface NavItem {
 
 const navigationItems: NavItem[] = [
   {
-    title: 'Panel Principal',
+    title: 'Inicio',
     href: '/dashboard',
     icon: Home,
-    description: 'Vista general del sistema'
+    description: 'Panel principal del sistema'
   },
   {
-    title: 'Casos',
+    title: 'Expropiaciones',
     href: '/cases',
     icon: FileText,
     description: 'Gestión de casos de expropiación',
@@ -60,13 +60,13 @@ const navigationItems: NavItem[] = [
         title: 'Todos los Casos',
         href: '/cases',
         icon: FileText,
-        description: 'Ver todos los casos'
+        description: 'Ver todos los casos de expropiación'
       },
       {
-        title: 'Crear Caso',
+        title: 'Nuevo Caso',
         href: '/cases?action=create',
         icon: FileText,
-        description: 'Crear nuevo caso',
+        description: 'Crear un nuevo caso de expropiación',
         roles: ['super_admin', 'department_admin', 'analyst']
       }
     ]
@@ -81,34 +81,34 @@ const navigationItems: NavItem[] = [
         title: 'Todas las Reuniones',
         href: '/meetings',
         icon: Calendar,
-        description: 'Ver todas las reuniones'
+        description: 'Ver todas las reuniones programadas'
       },
       {
-        title: 'Crear Reunión',
+        title: 'Nueva Reunión',
         href: '/meetings/create',
         icon: Calendar,
-        description: 'Programar nueva reunión',
+        description: 'Agendar una nueva reunión técnica',
         roles: ['super_admin', 'department_admin', 'technical_meeting_coordinator']
       }
     ]
   },
   {
-    title: 'Reportes',
+    title: 'Informes',
     href: '/reports',
     icon: BarChart3,
-    description: 'Análisis y estadísticas',
+    description: 'Reportes y estadísticas',
     children: [
       {
-        title: 'Panel de Reportes',
+        title: 'Panel de Informes',
         href: '/reports',
         icon: BarChart3,
-        description: 'Ver todos los reportes'
+        description: 'Ver todos los informes disponibles'
       },
       {
         title: 'Exportar Datos',
         href: '/reports/export',
         icon: Database,
-        description: 'Exportar datos del sistema',
+        description: 'Exportar información del sistema',
         roles: ['super_admin', 'department_admin']
       }
     ]
@@ -117,20 +117,20 @@ const navigationItems: NavItem[] = [
     title: 'Usuarios',
     href: '/users',
     icon: Users,
-    description: 'Gestión de usuarios',
+    description: 'Administración de usuarios',
     roles: ['super_admin', 'department_admin'],
     children: [
       {
         title: 'Todos los Usuarios',
         href: '/users',
         icon: Users,
-        description: 'Ver todos los usuarios'
+        description: 'Ver todos los usuarios del sistema'
       },
       {
         title: 'Roles y Permisos',
         href: '/dashboard/roles',
         icon: Shield,
-        description: 'Gestionar roles y permisos',
+        description: 'Gestionar roles y permisos de acceso',
         roles: ['super_admin']
       }
     ]
@@ -146,19 +146,19 @@ const navigationItems: NavItem[] = [
     title: 'Documentos',
     href: '/documents',
     icon: FileImage,
-    description: 'Gestión de documentos'
+    description: 'Gestión de documentos digitales'
   },
   {
     title: 'Notificaciones',
     href: '/notifications',
     icon: Bell,
-    description: 'Gestión de notificaciones',
+    description: 'Centro de notificaciones',
     children: [
       {
         title: 'Ver Notificaciones',
         href: '/notifications',
         icon: Bell,
-        description: 'Ver todas las notificaciones'
+        description: 'Ver todas las notificaciones recibidas'
       },
       {
         title: 'Configuración',
@@ -172,7 +172,7 @@ const navigationItems: NavItem[] = [
     title: 'Administración',
     href: '/admin',
     icon: Settings,
-    description: 'Configuración del sistema',
+    description: 'Configuración avanzada del sistema',
     roles: ['super_admin'],
     badge: 'Admin'
   }
@@ -364,7 +364,7 @@ export function SidebarNavigation({
               onClick={() => window.location.href = '/search'}
             >
               <Search className="h-4 w-4 mr-3" />
-              Búsqueda Global
+              Búsqueda global
             </Button>
             <Button
               variant="ghost"
@@ -372,7 +372,7 @@ export function SidebarNavigation({
               onClick={() => window.location.href = '/notifications'}
             >
               <Bell className="h-4 w-4 mr-3" />
-              Notificaciones
+              Ver notificaciones
             </Button>
           </>
         )}
