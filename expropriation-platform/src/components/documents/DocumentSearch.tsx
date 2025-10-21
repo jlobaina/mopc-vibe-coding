@@ -34,7 +34,6 @@ import {
 } from '@/lib/document-constants';
 
 interface DocumentSearchProps {
-  onResults?: (results: any[]) => void;
   onResultSelect?: (document: any) => void;
   compact?: boolean;
   initialQuery?: string;
@@ -81,7 +80,6 @@ interface SearchResults {
 }
 
 export function DocumentSearch({
-  onResults,
   onResultSelect,
   compact = false,
   initialQuery = ''
@@ -174,7 +172,6 @@ export function DocumentSearch({
       if (response.ok) {
         const data: SearchResults = await response.json();
         setResults(data);
-        onResults?.(data.results);
       } else {
         const error = await response.json();
         toast.error(error.error || 'La búsqueda falló');
@@ -184,7 +181,7 @@ export function DocumentSearch({
     } finally {
       setIsLoading(false);
     }
-  }, [query, filters, sort, pagination, onResults]);
+  }, [query, filters, sort, pagination]);
 
   // Get active filters (non-empty values)
   const getActiveFilters = () => {

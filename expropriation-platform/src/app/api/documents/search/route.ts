@@ -75,15 +75,15 @@ export async function POST(request: NextRequest) {
     const where: any = {
       OR: [
         // Search in title
-        { title: { contains: query, mode: 'insensitive' } },
+        { title: { contains: query } },
         // Search in description
-        { description: { contains: query, mode: 'insensitive' } },
+        { description: { contains: query } },
         // Search in filename
-        { fileName: { contains: query, mode: 'insensitive' } },
+        { fileName: { contains: query } },
         // Search in content (full-text search)
-        { contentText: { contains: query, mode: 'insensitive' } },
+        { contentText: { contains: query } },
         // Search in tags
-        { tags: { contains: query, mode: 'insensitive' } },
+        { tags: { contains: query } },
       ],
     };
 
@@ -189,12 +189,9 @@ export async function POST(request: NextRequest) {
     // Build sort options
     let orderBy: any = {};
     if (sort.field === 'relevance') {
-      // For relevance, we'll use a simple scoring based on matches
+      // For relevance, we'll sort by creation date as a fallback
       // In a real implementation, you might want to use a full-text search engine
-      orderBy = [
-        { title: { contains: query } ? { relevance: 'desc' } : { createdAt: 'desc' } },
-        { createdAt: sort.order as 'asc' | 'desc' },
-      ];
+      orderBy = { createdAt: sort.order === 'desc' ? 'desc' : 'asc' };
     } else {
       orderBy = { [sort.field]: sort.order };
     }
@@ -450,7 +447,7 @@ function getContentSnippet(content: string, query: string, maxLength: number = 2
 async function getTitleSuggestions(query: string, limit: number): Promise<string[]> {
   const documents = await prisma.document.findMany({
     where: {
-      title: { contains: query, mode: 'insensitive' },
+      title: { contains: query },
       status: { not: 'ARCHIVED' },
     },
     select: { title: true },
@@ -464,7 +461,7 @@ async function getTitleSuggestions(query: string, limit: number): Promise<string
 async function getTagSuggestions(query: string, limit: number): Promise<string[]> {
   const tags = await prisma.documentTag.findMany({
     where: {
-      tag: { contains: query, mode: 'insensitive' },
+      tag: { contains: query },
       isActive: true,
     },
     select: { tag: true },
@@ -486,9 +483,9 @@ async function getUserSuggestions(query: string, limit: number): Promise<string[
   const users = await prisma.user.findMany({
     where: {
       OR: [
-        { firstName: { contains: query, mode: 'insensitive' } },
-        { lastName: { contains: query, mode: 'insensitive' } },
-        { email: { contains: query, mode: 'insensitive' } },
+        { firstName: { contains: query } },
+        { lastName: { contains: query } },
+        { email: { contains: query } },
       ],
       isActive: true,
     },
@@ -512,9 +509,9 @@ async function getSearchFacets(query: string, filters: any): Promise<any> {
     by: ['documentType'],
     where: {
       OR: [
-        { title: { contains: query, mode: 'insensitive' } },
-        { description: { contains: query, mode: 'insensitive' } },
-        { contentText: { contains: query, mode: 'insensitive' } },
+        { title: { contains: query } },
+        { description: { contains: query } },
+        { contentText: { contains: query } },
       ],
       ...(filters.documentTypes && { documentType: { in: filters.documentTypes } }),
       ...(filters.categories && { category: { in: filters.categories } }),
@@ -533,9 +530,9 @@ async function getSearchFacets(query: string, filters: any): Promise<any> {
     by: ['category'],
     where: {
       OR: [
-        { title: { contains: query, mode: 'insensitive' } },
-        { description: { contains: query, mode: 'insensitive' } },
-        { contentText: { contains: query, mode: 'insensitive' } },
+        { title: { contains: query } },
+        { description: { contains: query } },
+        { contentText: { contains: query } },
       ],
       ...(filters.documentTypes && { documentType: { in: filters.documentTypes } }),
       ...(filters.categories && { category: { in: filters.categories } }),
@@ -554,9 +551,9 @@ async function getSearchFacets(query: string, filters: any): Promise<any> {
     by: ['status'],
     where: {
       OR: [
-        { title: { contains: query, mode: 'insensitive' } },
-        { description: { contains: query, mode: 'insensitive' } },
-        { contentText: { contains: query, mode: 'insensitive' } },
+        { title: { contains: query } },
+        { description: { contains: query } },
+        { contentText: { contains: query } },
       ],
       ...(filters.documentTypes && { documentType: { in: filters.documentTypes } }),
       ...(filters.categories && { category: { in: filters.categories } }),
