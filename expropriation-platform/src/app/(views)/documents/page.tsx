@@ -19,61 +19,7 @@ import {
   Filter
 } from 'lucide-react';
 import { DocumentType } from '@prisma/client';
-
-// Translation function for document types (copied from DocumentSearch)
-const getDocumentTypeTranslation = (type: DocumentType): string => {
-  const translations: Record<DocumentType, string> = {
-    LEGAL_DOCUMENT: 'Documento Legal',
-    TECHNICAL_REPORT: 'Informe Técnico',
-    FORM_TEMPLATE: 'Plantilla de Formulario',
-    MEETING_MINUTES: 'Acta de Reunión',
-    CONTRACT: 'Contrato',
-    AGREEMENT: 'Acuerdo',
-    CERTIFICATE: 'Certificado',
-    PERMIT: 'Permiso',
-    LICENSE: 'Licencia',
-    CORRESPONDENCE: 'Correspondencia',
-    REPORT: 'Informe',
-    PRESENTATION: 'Presentación',
-    MANUAL: 'Manual',
-    POLICY: 'Política',
-    PROCEDURE: 'Procedimiento',
-    GUIDELINE: 'Directriz',
-    TEMPLATE: 'Plantilla',
-    FORM: 'Formulario',
-    CHECKLIST: 'Lista de Verificación',
-    APPROVAL: 'Aprobación',
-    REJECTION: 'Rechazo',
-    NOTIFICATION: 'Notificación',
-    MEMORANDUM: 'Memorando',
-    INVOICE: 'Factura',
-    RECEIPT: 'Recibo',
-    BUDGET: 'Presupuesto',
-    FINANCIAL_REPORT: 'Informe Financiero',
-    TAX_DOCUMENT: 'Documento Tributario',
-    INSURANCE: 'Seguro',
-    LEGAL_NOTICE: 'Aviso Legal',
-    COURT_FILING: 'Presentación Judicial',
-    EVIDENCE: 'Evidencia',
-    TESTIMONY: 'Testimonio',
-    EXPERT_REPORT: 'Informe Pericial',
-    PHOTOGRAPH: 'Fotografía',
-    VIDEO: 'Video',
-    AUDIO: 'Audio',
-    BLUEPRINT: 'Plano',
-    SURVEY: 'Encuesta',
-    INSPECTION: 'Inspección',
-    APPRAISAL: 'Avaluó',
-    ENVIRONMENTAL: 'ambiental',
-    SOCIAL: 'Social',
-    ECONOMIC: 'Económico',
-    TECHNICAL: 'Técnico',
-    ENGINEERING: 'Ingeniería',
-    ARCHITECTURAL: 'Arquitectónico',
-    OTHER: 'Otro'
-  };
-  return translations[type] || type.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
-};
+import { getDocumentTypeTranslation } from '@/lib/document-constants';
 import { toast } from 'react-hot-toast';
 
 export default function DocumentsPage() {
