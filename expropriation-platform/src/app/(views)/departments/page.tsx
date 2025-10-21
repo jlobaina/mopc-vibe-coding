@@ -156,24 +156,42 @@ export default function DepartmentsManagementPage() {
 
   const handleCreateDepartment = async (departmentData: any) => {
     try {
+      console.log('Creating department with data:', departmentData);
+
       const response = await fetch('/api/departments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(departmentData),
       });
 
+      console.log('Department creation response status:', response.status);
+
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || 'Error al crear departamento');
+        console.error('Department creation error:', error);
+
+        // Provide more specific error messages
+        let errorMessage = 'Error al crear departamento';
+        if (error.details && Array.isArray(error.details)) {
+          errorMessage = error.details.map((detail: any) => detail.message).join(', ');
+        } else if (error.error) {
+          errorMessage = error.error;
+        }
+
+        throw new Error(errorMessage);
       }
 
       const newDepartment = await response.json();
+      console.log('Department created successfully:', newDepartment);
+
       toast.success('Departamento creado correctamente');
       setShowCreateDialog(false);
       setCreateParentId(null);
       await fetchDepartments();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Error al crear departamento');
+      console.error('Department creation failed:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Error al crear departamento';
+      toast.error(errorMessage);
       throw error;
     }
   };
@@ -700,7 +718,7 @@ export default function DepartmentsManagementPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta acción eliminará permanentemente el departamento "{selectedDepartment?.name}".
+              Esta acción eliminará permanentemente el departamento &quot;{selectedDepartment?.name}&quot;.
               Esta acción no se puede deshacer.
             </AlertDialogDescription>
           </AlertDialogHeader>

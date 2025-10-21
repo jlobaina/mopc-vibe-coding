@@ -9,36 +9,36 @@ import { logActivity } from '@/lib/activity-logger';
 const createDepartmentSchema = z.object({
   name: z.string().min(1, 'El nombre del departamento es requerido'),
   code: z.string().min(1, 'El código del departamento es requerido'),
-  parentId: z.string().optional(),
-  description: z.string().optional(),
-  headUserId: z.string().optional(),
+  parentId: z.string().nullable().optional(),
+  description: z.string().nullable().optional(),
+  headUserId: z.string().nullable().optional(),
   contactInfo: z.object({
-    email: z.string().email().optional(),
-    phone: z.string().optional(),
-    address: z.string().optional(),
-  }).optional(),
+    email: z.string().email().nullable().optional(),
+    phone: z.string().nullable().optional(),
+    address: z.string().nullable().optional(),
+  }).nullable().optional(),
   location: z.object({
-    building: z.string().optional(),
-    floor: z.string().optional(),
-    office: z.string().optional(),
+    building: z.string().nullable().optional(),
+    floor: z.string().nullable().optional(),
+    office: z.string().nullable().optional(),
     coordinates: z.object({
       lat: z.number().optional(),
       lng: z.number().optional(),
     }).optional(),
-  }).optional(),
-  type: z.string().optional(),
+  }).nullable().optional(),
+  type: z.string().nullable().optional(),
   isActive: z.boolean().default(true),
-  userCapacity: z.number().positive().optional(),
-  budget: z.number().positive().optional(),
+  userCapacity: z.number().positive().nullable().optional(),
+  budget: z.number().positive().nullable().optional(),
   operatingHours: z.object({
-    monday: z.string().optional(),
-    tuesday: z.string().optional(),
-    wednesday: z.string().optional(),
-    thursday: z.string().optional(),
-    friday: z.string().optional(),
-    saturday: z.string().optional(),
-    sunday: z.string().optional(),
-  }).optional(),
+    monday: z.string().nullable().optional(),
+    tuesday: z.string().nullable().optional(),
+    wednesday: z.string().nullable().optional(),
+    thursday: z.string().nullable().optional(),
+    friday: z.string().nullable().optional(),
+    saturday: z.string().nullable().optional(),
+    sunday: z.string().nullable().optional(),
+  }).nullable().optional(),
 });
 
 // Schema for department updates
@@ -190,13 +190,9 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // Prevent circular reference
-      if (validatedData.parentId === validatedData.parentId) {
-        return NextResponse.json(
-          { error: 'Un departamento no puede ser su propio padre' },
-          { status: 400 }
-        );
-      }
+      // Note: Circular reference check for self-parent is not needed during creation
+      // This check would be relevant during updates when trying to set a department
+      // as its own parent through a circular chain
     }
 
     // If headUserId is provided, validate the user exists
@@ -214,41 +210,55 @@ export async function POST(request: NextRequest) {
     }
 
     // Create department
-    const department = await prisma.department.create({
-      data: validatedData,
-      include: {
-        parent: {
-          select: { id: true, name: true, code: true },
-        },
-        headUser: {
-          select: { id: true, firstName: true, lastName: true, email: true },
-        },
-        children: {
-          select: { id: true, name: true, code: true, isActive: true },
-        },
-        _count: {
-          select: {
-            users: true,
-            cases: true,
-            children: true,
+    let department;
+    try {
+      department = await prisma.department.create({
+        data: validatedData,
+        include: {
+          parent: {
+            select: { id: true, name: true, code: true },
+          },
+          headUser: {
+            select: { id: true, firstName: true, lastName: true, email: true },
+          },
+          children: {
+            select: { id: true, name: true, code: true, isActive: true },
+          },
+          _count: {
+            select: {
+              users: true,
+              cases: true,
+              children: true,
+            },
           },
         },
-      },
-    });
+      });
+    } catch (dbError) {
+      console.error('Database error creating department:', dbError);
+      return NextResponse.json(
+        { error: 'Error de base de datos al crear departamento' },
+        { status: 500 }
+      );
+    }
 
     // Log activity
-    await logActivity({
-      userId: session.user.id,
-      action: 'CREATED',
-      entityType: 'department',
-      entityId: department.id,
-      description: `Departamento creado: ${department.name}`,
-      metadata: {
-        departmentName: department.name,
-        departmentCode: department.code,
-        parentDepartment: department.parent?.name || 'Ninguno',
-      },
-    });
+    try {
+      await logActivity({
+        userId: session.user.id,
+        action: 'CREATED',
+        entityType: 'department',
+        entityId: department.id,
+        description: `Departamento creado: ${department.name}`,
+        metadata: {
+          departmentName: department.name,
+          departmentCode: department.code,
+          parentDepartment: department.parent?.name || 'Ninguno',
+        },
+      });
+    } catch (logError) {
+      console.error('Error logging department creation:', logError);
+      // Don't fail the request if logging fails
+    }
 
     // Remove sensitive data and format response
     const sanitizedDepartment = {

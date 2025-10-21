@@ -14,7 +14,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'react-hot-toast';
-import { Building, Mail, Phone, MapPin, User, Briefcase, Clock, DollarSign, Users } from 'lucide-react';
+import { Building, Mail, Phone, MapPin, User, Briefcase, Clock, DollarSign, Users, Settings } from 'lucide-react';
 
 // Schema for department form
 const departmentSchema = z.object({
@@ -170,7 +170,37 @@ export function DepartmentForm({
   const handleFormSubmit = async (data: DepartmentFormData) => {
     setIsSubmitting(true);
     try {
-      await onSubmit(data);
+      // Clean up data before submission
+      const cleanedData = {
+        ...data,
+        parentId: data.parentId || null,
+        headUserId: data.headUserId || null,
+        description: data.description || null,
+        type: data.type || null,
+        userCapacity: data.userCapacity || null,
+        budget: data.budget || null,
+        contactInfo: {
+          email: data.contactInfo?.email || null,
+          phone: data.contactInfo?.phone || null,
+          address: data.contactInfo?.address || null,
+        } || null,
+        location: {
+          building: data.location?.building || null,
+          floor: data.location?.floor || null,
+          office: data.location?.office || null,
+        } || null,
+        operatingHours: {
+          monday: data.operatingHours?.monday || null,
+          tuesday: data.operatingHours?.tuesday || null,
+          wednesday: data.operatingHours?.wednesday || null,
+          thursday: data.operatingHours?.thursday || null,
+          friday: data.operatingHours?.friday || null,
+          saturday: data.operatingHours?.saturday || null,
+          sunday: data.operatingHours?.sunday || null,
+        } || null,
+      };
+
+      await onSubmit(cleanedData);
       if (mode === 'create') {
         reset();
       }
@@ -559,5 +589,3 @@ export function DepartmentForm({
   );
 }
 
-// Fix import for Settings icon
-import { Settings } from 'lucide-react';
