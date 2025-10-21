@@ -125,20 +125,7 @@ export default function DocumentsPage() {
 
         {/* Upload Tab */}
         <TabsContent value="upload">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Upload className="h-5 w-5" />
-                <span>Subir Documentos</span>
-              </CardTitle>
-              <CardDescription>
-                Suba uno o varios documentos con metadatos, categorización y configuración de seguridad
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <DocumentUpload onUploadComplete={handleUploadComplete} maxFiles={10} />
-            </CardContent>
-          </Card>
+          <DocumentUpload onUploadComplete={handleUploadComplete} maxFiles={10} />
         </TabsContent>
 
         {/* Search Tab */}

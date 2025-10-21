@@ -27,87 +27,11 @@ import {
   DocumentStatus,
   DocumentSecurityLevel
 } from '@prisma/client';
-
-// Spanish translations for document types
-const documentTypeTranslations: Record<DocumentType, string> = {
-  LEGAL_DOCUMENT: 'Documento Legal',
-  TECHNICAL_REPORT: 'Informe Técnico',
-  FORM_TEMPLATE: 'Plantilla de Formulario',
-  MEETING_MINUTES: 'Acta de Reunión',
-  CONTRACT: 'Contrato',
-  AGREEMENT: 'Acuerdo',
-  CERTIFICATE: 'Certificado',
-  PERMIT: 'Permiso',
-  LICENSE: 'Licencia',
-  CORRESPONDENCE: 'Correspondencia',
-  REPORT: 'Informe',
-  PRESENTATION: 'Presentación',
-  MANUAL: 'Manual',
-  POLICY: 'Política',
-  PROCEDURE: 'Procedimiento',
-  REGULATION: 'Reglamento',
-  BID_DOCUMENT: 'Documento de Licitación',
-  FINANCIAL_DOCUMENT: 'Documento Financiero',
-  INSURANCE_DOCUMENT: 'Documento de Seguro',
-  TAX_DOCUMENT: 'Documento Tributario',
-  COURT_DOCUMENT: 'Documento Judicial',
-  OTHER: 'Otro'
-};
-
-// Spanish translations for document categories
-const documentCategoryTranslations: Record<DocumentCategory, string> = {
-  EXPROPRIATION_CASE: 'Caso de Expropiación',
-  LEGAL_DOCUMENT: 'Documento Legal',
-  TECHNICAL_ANALYSIS: 'Análisis Técnico',
-  VALUATION_REPORT: 'Informe de Valoración',
-  SURVEY_REPORT: 'Informe de Levantamiento',
-  PERMIT_APPLICATION: 'Solicitud de Permiso',
-  COURT_FILING: 'Documento Judicial',
-  FINANCIAL_RECORD: 'Registro Financiero',
-  INSURANCE_POLICY: 'Póliza de Seguro',
-  TAX_DOCUMENTATION: 'Documentación Tributaria',
-  CONTRACT_AGREEMENT: 'Contrato/Acuerdo',
-  CORRESPONDENCE: 'Correspondencia',
-  MEETING_DOCUMENTS: 'Documentos de Reunión',
-  REFERENCE_MATERIAL: 'Material de Referencia',
-  ADMINISTRATIVE: 'Administrativo',
-  OTHER: 'Otro'
-};
-
-// Spanish translations for document status
-const documentStatusTranslations: Record<DocumentStatus, string> = {
-  DRAFT: 'Borrador',
-  UNDER_REVIEW: 'En Revisión',
-  APPROVED: 'Aprobado',
-  REJECTED: 'Rechazado',
-  PUBLISHED: 'Publicado',
-  ARCHIVED: 'Archivado',
-  EXPIRED: 'Vencido',
-  DELETED: 'Eliminado'
-};
-
-// Spanish translations for security levels
-const securityLevelTranslations: Record<DocumentSecurityLevel, string> = {
-  PUBLIC: 'Público',
-  INTERNAL: 'Interno',
-  CONFIDENTIAL: 'Confidencial',
-  RESTRICTED: 'Restringido'
-};
-
-// Helper function to get Spanish translation for document type
-const getDocumentTypeTranslation = (type: DocumentType): string => {
-  return documentTypeTranslations[type] || type.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
-};
-
-// Helper function to get Spanish translation for document category
-const getDocumentCategoryTranslation = (category: DocumentCategory): string => {
-  return documentCategoryTranslations[category] || category.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
-};
-
-// Helper function to get Spanish translation for document status
-const getDocumentStatusTranslation = (status: DocumentStatus): string => {
-  return documentStatusTranslations[status] || status.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
-};
+import {
+  getDocumentTypeTranslation,
+  getDocumentCategoryTranslation,
+  getDocumentStatusTranslation
+} from '@/lib/document-constants';
 
 interface DocumentSearchProps {
   onResults?: (results: any[]) => void;

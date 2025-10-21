@@ -15,6 +15,11 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { DocumentType, DocumentCategory, DocumentSecurityLevel } from '@prisma/client';
 import { toast } from 'react-hot-toast';
+import {
+  getDocumentTypeTranslation,
+  getDocumentCategoryTranslation,
+  getDocumentSecurityLevelTranslation
+} from '@/lib/document-constants';
 
 interface DocumentUploadProps {
   onUploadComplete?: (documents: any[]) => void;
@@ -69,11 +74,11 @@ export function DocumentUpload({ onUploadComplete, maxFiles = 10, caseId }: Docu
     if (rejectedFiles.length > 0) {
       rejectedFiles.forEach((rejected) => {
         if (rejected.errors.some((error: any) => error.code === 'file-too-large')) {
-          toast.error(`File "${rejected.file.name}" is too large. Maximum size is 100MB.`);
+          toast.error(`El archivo "${rejected.file.name}" es demasiado grande. El tamaño máximo es 100MB.`);
         } else if (rejected.errors.some((error: any) => error.code === 'file-invalid-type')) {
-          toast.error(`File "${rejected.file.name}" has an unsupported type.`);
+          toast.error(`El archivo "${rejected.file.name}" tiene un tipo no compatible.`);
         } else {
-          toast.error(`File "${rejected.file.name}" was rejected: ${rejected.errors[0].message}`);
+          toast.error(`El archivo "${rejected.file.name}" fue rechazado: ${rejected.errors[0].message}`);
         }
       });
     }
@@ -134,7 +139,7 @@ export function DocumentUpload({ onUploadComplete, maxFiles = 10, caseId }: Docu
 
   const uploadFiles = async () => {
     if (files.length === 0) {
-      toast.error('No files to upload');
+      toast.error('No hay archivos para cargar');
       return;
     }
 
@@ -144,7 +149,7 @@ export function DocumentUpload({ onUploadComplete, maxFiles = 10, caseId }: Docu
     );
 
     if (invalidFiles.length > 0) {
-      toast.error('All files must have a title');
+      toast.error('Todos los archivos deben tener un título');
       return;
     }
 
@@ -191,7 +196,7 @@ export function DocumentUpload({ onUploadComplete, maxFiles = 10, caseId }: Docu
 
           if (!response.ok) {
             const error = await response.json();
-            throw new Error(error.error || 'Upload failed');
+            throw new Error(error.error || 'Error al cargar el archivo');
           }
 
           const document = await response.json();
@@ -217,7 +222,7 @@ export function DocumentUpload({ onUploadComplete, maxFiles = 10, caseId }: Docu
                 ? {
                     ...f,
                     status: 'error',
-                    error: error instanceof Error ? error.message : 'Upload failed',
+                    error: error instanceof Error ? error.message : 'Error al cargar el archivo',
                   }
                 : f
             )
@@ -229,7 +234,7 @@ export function DocumentUpload({ onUploadComplete, maxFiles = 10, caseId }: Docu
       setIsUploading(false);
 
       if (uploadedDocuments.length > 0) {
-        toast.success(`${uploadedDocuments.length} document(s) uploaded successfully`);
+        toast.success(`${uploadedDocuments.length} documento(s) cargado(s) exitosamente`);
         onUploadComplete?.(uploadedDocuments);
 
         // Clear successful uploads after a delay
@@ -237,12 +242,12 @@ export function DocumentUpload({ onUploadComplete, maxFiles = 10, caseId }: Docu
           setFiles((prev) => prev.filter((f) => f.status !== 'success'));
         }, 2000);
       } else {
-        toast.error('No documents were uploaded successfully');
+        toast.error('No se cargaron documentos exitosamente');
       }
 
     } catch (error) {
       setIsUploading(false);
-      toast.error(error instanceof Error ? error.message : 'Upload failed');
+      toast.error(error instanceof Error ? error.message : 'Error al cargar el archivo');
     }
   };
 
@@ -250,7 +255,7 @@ export function DocumentUpload({ onUploadComplete, maxFiles = 10, caseId }: Docu
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
       setIsUploading(false);
-      toast.info('Upload cancelled');
+      toast.info('Carga cancelada');
     }
   };
 
@@ -280,9 +285,9 @@ export function DocumentUpload({ onUploadComplete, maxFiles = 10, caseId }: Docu
       {/* Dropzone */}
       <Card>
         <CardHeader>
-          <CardTitle>Upload Documents</CardTitle>
+          <CardTitle>Cargar Documentos</CardTitle>
           <CardDescription>
-            Drag and drop files here, or click to select files. Maximum {maxFiles} files, 100MB each.
+            Arrastre y suelte archivos aquí, o haga clic para seleccionar archivos. Máximo {maxFiles} archivos, 100MB cada uno.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -298,11 +303,11 @@ export function DocumentUpload({ onUploadComplete, maxFiles = 10, caseId }: Docu
             <Upload className="mx-auto h-12 w-12 text-gray-400" />
             <p className="mt-2 text-sm text-gray-600">
               {isDragActive
-                ? 'Drop the files here...'
-                : 'Drag & drop files here, or click to select'}
+                ? 'Suelte los archivos aquí...'
+                : 'Arrastre y suelte archivos aquí, o haga clic para seleccionar'}
             </p>
             <p className="text-xs text-gray-500 mt-1">
-              Supported: PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX, JPG, PNG, GIF, WebP, TXT, CSV
+              Formatos compatibles: PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX, JPG, PNG, GIF, WebP, TXT, CSV
             </p>
           </div>
         </CardContent>
@@ -312,9 +317,9 @@ export function DocumentUpload({ onUploadComplete, maxFiles = 10, caseId }: Docu
       {files.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>Files to Upload</CardTitle>
+            <CardTitle>Archivos para Cargar</CardTitle>
             <CardDescription>
-              Configure document details for each file before uploading.
+              Configure los detalles del documento para cada archivo antes de cargarlo.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -344,7 +349,7 @@ export function DocumentUpload({ onUploadComplete, maxFiles = 10, caseId }: Docu
                 {fileUpload.status === 'uploading' && (
                   <div className="space-y-2">
                     <div className="flex justify-between text-sm">
-                      <span>Uploading...</span>
+                      <span>Cargando...</span>
                       <span>{fileUpload.progress}%</span>
                     </div>
                     <Progress value={fileUpload.progress} />
@@ -362,18 +367,18 @@ export function DocumentUpload({ onUploadComplete, maxFiles = 10, caseId }: Docu
                 {/* Document Details */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor={`title-${fileUpload.id}`}>Title *</Label>
+                    <Label htmlFor={`title-${fileUpload.id}`}>Título *</Label>
                     <Input
                       id={`title-${fileUpload.id}`}
                       value={fileUpload.documentData.title}
                       onChange={(e) => updateFileData(fileUpload.id, 'title', e.target.value)}
                       disabled={isUploading}
-                      placeholder="Document title"
+                      placeholder="Título del documento"
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor={`type-${fileUpload.id}`}>Document Type</Label>
+                    <Label htmlFor={`type-${fileUpload.id}`}>Tipo de Documento</Label>
                     <Select
                       value={fileUpload.documentData.documentType}
                       onValueChange={(value: DocumentType) =>
@@ -387,7 +392,7 @@ export function DocumentUpload({ onUploadComplete, maxFiles = 10, caseId }: Docu
                       <SelectContent>
                         {Object.values(DocumentType).map((type) => (
                           <SelectItem key={type} value={type}>
-                            {type.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
+                            {getDocumentTypeTranslation(type)}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -395,7 +400,7 @@ export function DocumentUpload({ onUploadComplete, maxFiles = 10, caseId }: Docu
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor={`category-${fileUpload.id}`}>Category</Label>
+                    <Label htmlFor={`category-${fileUpload.id}`}>Categoría</Label>
                     <Select
                       value={fileUpload.documentData.category}
                       onValueChange={(value: DocumentCategory) =>
@@ -409,7 +414,7 @@ export function DocumentUpload({ onUploadComplete, maxFiles = 10, caseId }: Docu
                       <SelectContent>
                         {Object.values(DocumentCategory).map((category) => (
                           <SelectItem key={category} value={category}>
-                            {category.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
+                            {getDocumentCategoryTranslation(category)}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -417,7 +422,7 @@ export function DocumentUpload({ onUploadComplete, maxFiles = 10, caseId }: Docu
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor={`security-${fileUpload.id}`}>Security Level</Label>
+                    <Label htmlFor={`security-${fileUpload.id}`}>Nivel de Seguridad</Label>
                     <Select
                       value={fileUpload.documentData.securityLevel}
                       onValueChange={(value: DocumentSecurityLevel) =>
@@ -431,7 +436,7 @@ export function DocumentUpload({ onUploadComplete, maxFiles = 10, caseId }: Docu
                       <SelectContent>
                         {Object.values(DocumentSecurityLevel).map((level) => (
                           <SelectItem key={level} value={level}>
-                            {level.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
+                            {getDocumentSecurityLevelTranslation(level)}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -439,25 +444,25 @@ export function DocumentUpload({ onUploadComplete, maxFiles = 10, caseId }: Docu
                   </div>
 
                   <div className="space-y-2 md:col-span-2">
-                    <Label htmlFor={`description-${fileUpload.id}`}>Description</Label>
+                    <Label htmlFor={`description-${fileUpload.id}`}>Descripción</Label>
                     <Textarea
                       id={`description-${fileUpload.id}`}
                       value={fileUpload.documentData.description}
                       onChange={(e) => updateFileData(fileUpload.id, 'description', e.target.value)}
                       disabled={isUploading}
-                      placeholder="Document description"
+                      placeholder="Descripción del documento"
                       rows={3}
                     />
                   </div>
 
                   <div className="space-y-2 md:col-span-2">
-                    <Label htmlFor={`tags-${fileUpload.id}`}>Tags</Label>
+                    <Label htmlFor={`tags-${fileUpload.id}`}>Etiquetas</Label>
                     <Input
                       id={`tags-${fileUpload.id}`}
                       value={fileUpload.documentData.tags}
                       onChange={(e) => updateFileData(fileUpload.id, 'tags', e.target.value)}
                       disabled={isUploading}
-                      placeholder="Enter tags separated by commas"
+                      placeholder="Ingrese etiquetas separadas por comas"
                     />
                   </div>
                 </div>
@@ -467,12 +472,12 @@ export function DocumentUpload({ onUploadComplete, maxFiles = 10, caseId }: Docu
             {/* Upload Controls */}
             <div className="flex justify-between items-center pt-4 border-t">
               <div className="text-sm text-gray-500">
-                {files.length} file(s) selected
+                {files.length} archivo(s) seleccionado(s)
               </div>
               <div className="space-x-2">
                 {isUploading ? (
                   <Button variant="outline" onClick={cancelUpload}>
-                    Cancel Upload
+                    Cancelar Carga
                   </Button>
                 ) : (
                   <>
@@ -481,13 +486,13 @@ export function DocumentUpload({ onUploadComplete, maxFiles = 10, caseId }: Docu
                       onClick={() => setFiles([])}
                       disabled={files.length === 0}
                     >
-                      Clear All
+                      Limpiar Todo
                     </Button>
                     <Button
                       onClick={uploadFiles}
                       disabled={files.length === 0 || isUploading}
                     >
-                      Upload {files.length} Document{files.length !== 1 ? 's' : ''}
+                      Cargar {files.length} Documento{files.length !== 1 ? 's' : ''}
                     </Button>
                   </>
                 )}
@@ -498,7 +503,7 @@ export function DocumentUpload({ onUploadComplete, maxFiles = 10, caseId }: Docu
             {isUploading && (
               <div className="space-y-2 pt-4 border-t">
                 <div className="flex justify-between text-sm">
-                  <span>Overall Progress</span>
+                  <span>Progreso General</span>
                   <span>{Math.round(uploadProgress)}%</span>
                 </div>
                 <Progress value={uploadProgress} />
