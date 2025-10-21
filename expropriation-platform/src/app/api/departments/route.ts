@@ -4,45 +4,7 @@ import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
 import { logActivity } from '@/lib/activity-logger';
-
-// Schema for department creation
-const createDepartmentSchema = z.object({
-  name: z.string().min(1, 'El nombre del departamento es requerido'),
-  code: z.string().min(1, 'El código del departamento es requerido'),
-  parentId: z.string().nullable().optional(),
-  description: z.string().nullable().optional(),
-  headUserId: z.string().nullable().optional(),
-  contactInfo: z.object({
-    email: z.string().email().nullable().optional(),
-    phone: z.string().nullable().optional(),
-    address: z.string().nullable().optional(),
-  }).nullable().optional(),
-  location: z.object({
-    building: z.string().nullable().optional(),
-    floor: z.string().nullable().optional(),
-    office: z.string().nullable().optional(),
-    coordinates: z.object({
-      lat: z.number().optional(),
-      lng: z.number().optional(),
-    }).optional(),
-  }).nullable().optional(),
-  type: z.string().nullable().optional(),
-  isActive: z.boolean().default(true),
-  userCapacity: z.number().positive().nullable().optional(),
-  budget: z.number().positive().nullable().optional(),
-  operatingHours: z.object({
-    monday: z.string().nullable().optional(),
-    tuesday: z.string().nullable().optional(),
-    wednesday: z.string().nullable().optional(),
-    thursday: z.string().nullable().optional(),
-    friday: z.string().nullable().optional(),
-    saturday: z.string().nullable().optional(),
-    sunday: z.string().nullable().optional(),
-  }).nullable().optional(),
-});
-
-// Schema for department updates
-const updateDepartmentSchema = createDepartmentSchema.partial();
+import { departmentSchema, updateDepartmentSchema } from '@/lib/validators/department-validator';
 
 // GET /api/departments - List departments with filtering and hierarchy
 export async function GET(request: NextRequest) {
@@ -163,7 +125,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const validatedData = createDepartmentSchema.parse(body);
+    const validatedData = departmentSchema.parse(body);
 
     // Check if department code already exists
     const existingDept = await prisma.department.findUnique({
@@ -209,9 +171,10 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Create department
+    // Create department with simplified schema
     let department;
     try {
+      // Create department directly with simplified data
       department = await prisma.department.create({
         data: validatedData,
         include: {

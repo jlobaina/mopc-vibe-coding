@@ -27,31 +27,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { toast } from 'react-hot-toast';
+import { Department } from '@/lib/types/department';
 
-interface Department {
-  id: string;
-  name: string;
-  code: string;
-  description?: string | null;
-  parentId?: string | null;
-  isActive: boolean;
-  isSuspended?: boolean;
-  userCount: number;
-  caseCount: number;
-  childCount: number;
-  headUser?: {
-    id: string;
-    firstName: string;
-    lastName: string;
-    email: string;
-  } | null;
-  children?: Department[];
-  parent?: {
-    id: string;
-    name: string;
-    code: string;
-  } | null;
-}
 
 interface DepartmentTreeProps {
   departments: Department[];
@@ -186,11 +163,11 @@ const TreeNode: React.FC<TreeNodeProps> = ({
             <div className="flex items-center gap-4 mt-1 text-xs text-muted-foreground">
               <div className="flex items-center gap-1">
                 <Users className="h-3 w-3" />
-                {department.userCount} usuarios
+                {department.userCount || 0} usuarios
               </div>
               <div className="flex items-center gap-1">
                 <Building className="h-3 w-3" />
-                {department.caseCount} casos
+                {department.caseCount || 0} casos
               </div>
               {department.headUser && (
                 <div className="flex items-center gap-1">
@@ -228,7 +205,7 @@ const TreeNode: React.FC<TreeNodeProps> = ({
                 <DropdownMenuItem
                   onClick={() => onDeleteDepartment?.(department)}
                   className="text-destructive"
-                  disabled={department.userCount > 0 || department.caseCount > 0 || department.childCount > 0}
+                  disabled={(department.userCount || 0) > 0 || (department.caseCount || 0) > 0 || (department.childCount || 0) > 0}
                 >
                   <Trash2 className="h-4 w-4 mr-2" />
                   Eliminar
@@ -431,8 +408,8 @@ export const DepartmentTree: React.FC<DepartmentTreeProps> = ({
     const activeDepts = departments.filter(d => d.isActive).length;
     const inactiveDepts = totalDepts - activeDepts;
     const suspendedDepts = departments.filter(d => d.isSuspended).length;
-    const totalUsers = departments.reduce((sum, d) => sum + d.userCount, 0);
-    const totalCases = departments.reduce((sum, d) => sum + d.caseCount, 0);
+    const totalUsers = departments.reduce((sum, d) => sum + (d.userCount || 0), 0);
+    const totalCases = departments.reduce((sum, d) => sum + (d.caseCount || 0), 0);
 
     return {
       totalDepts,

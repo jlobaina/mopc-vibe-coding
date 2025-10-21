@@ -4,42 +4,7 @@ import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
 import { logActivity } from '@/lib/activity-logger';
-
-// Schema for department updates
-const updateDepartmentSchema = z.object({
-  name: z.string().min(1, 'El nombre del departamento es requerido').optional(),
-  code: z.string().min(1, 'El código del departamento es requerido').optional(),
-  parentId: z.string().nullable().optional(),
-  description: z.string().optional(),
-  headUserId: z.string().nullable().optional(),
-  contactInfo: z.object({
-    email: z.string().email().optional(),
-    phone: z.string().optional(),
-    address: z.string().optional(),
-  }).optional(),
-  location: z.object({
-    building: z.string().optional(),
-    floor: z.string().optional(),
-    office: z.string().optional(),
-    coordinates: z.object({
-      lat: z.number().optional(),
-      lng: z.number().optional(),
-    }).optional(),
-  }).optional(),
-  type: z.string().optional(),
-  isActive: z.boolean().optional(),
-  userCapacity: z.number().positive().optional(),
-  budget: z.number().positive().optional(),
-  operatingHours: z.object({
-    monday: z.string().optional(),
-    tuesday: z.string().optional(),
-    wednesday: z.string().optional(),
-    thursday: z.string().optional(),
-    friday: z.string().optional(),
-    saturday: z.string().optional(),
-    sunday: z.string().optional(),
-  }).optional(),
-});
+import { updateDepartmentSchema } from '@/lib/validators/department-validator';
 
 // GET /api/departments/[id] - Get specific department
 export async function GET(
