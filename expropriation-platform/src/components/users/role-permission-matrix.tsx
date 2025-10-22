@@ -48,6 +48,7 @@ import {
   Upload,
   Eye,
   EyeOff,
+  X,
   MoreHorizontal,
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
@@ -616,24 +617,31 @@ export function RolePermissionMatrix({ roles, onRolesUpdate }: RolePermissionMat
       </Tabs>
 
       {/* Create/Edit Role Dialog */}
-      <Dialog open={showCreateDialog || showEditDialog} onOpenChange={(open) => {
-        if (!open) {
-          setShowCreateDialog(false);
-          setShowEditDialog(false);
-          resetForm();
-        }
-      }}>
+      <Dialog open={showCreateDialog || showEditDialog}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <button
+            onClick={() => {
+              setShowCreateDialog(false);
+              setShowEditDialog(false);
+              resetForm();
+            }}
+            className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 z-10"
+          >
+            <X className="h-4 w-4" />
+            <span className="sr-only">Close</span>
+          </button>
           <DialogHeader>
-            <DialogTitle>
-              {showCreateDialog ? 'Crear Nuevo Rol' : 'Editar Rol'}
-            </DialogTitle>
-            <DialogDescription>
-              {showCreateDialog
-                ? 'Configura los permisos para el nuevo rol'
-                : 'Modifica los permisos del rol existente'
-              }
-            </DialogDescription>
+            <div>
+              <DialogTitle>
+                {showCreateDialog ? 'Crear Nuevo Rol' : 'Editar Rol'}
+              </DialogTitle>
+              <DialogDescription>
+                {showCreateDialog
+                  ? 'Configura los permisos para el nuevo rol'
+                  : 'Modifica los permisos del rol existente'
+                }
+              </DialogDescription>
+            </div>
           </DialogHeader>
 
           <div className="space-y-6">
@@ -725,18 +733,27 @@ export function RolePermissionMatrix({ roles, onRolesUpdate }: RolePermissionMat
       </Dialog>
 
       {/* Delete Role Dialog */}
-      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+      <Dialog open={showDeleteDialog}>
         <DialogContent>
+          <button
+            onClick={() => setShowDeleteDialog(false)}
+            className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 z-10"
+          >
+            <X className="h-4 w-4" />
+            <span className="sr-only">Close</span>
+          </button>
           <DialogHeader>
-            <DialogTitle>¿Eliminar Rol?</DialogTitle>
-            <DialogDescription>
-              ¿Estás seguro de que deseas eliminar el rol "{selectedRole?.name}"?
-              {selectedRole && (selectedRole.userCount ?? 0) > 0 && (
-                <span className="text-destructive font-medium">
-                  {' '}Este rol está asignado a {(selectedRole.userCount ?? 0)} usuario{(selectedRole.userCount ?? 0) !== 1 ? 's' : ''} y no puede ser eliminado.
-                </span>
-              )}
-            </DialogDescription>
+            <div>
+              <DialogTitle>¿Eliminar Rol?</DialogTitle>
+              <DialogDescription>
+                ¿Estás seguro de que deseas eliminar el rol "{selectedRole?.name}"?
+                {selectedRole && (selectedRole.userCount ?? 0) > 0 && (
+                  <span className="text-destructive font-medium">
+                    {' '}Este rol está asignado a {(selectedRole.userCount ?? 0)} usuario{(selectedRole.userCount ?? 0) !== 1 ? 's' : ''} y no puede ser eliminado.
+                  </span>
+                )}
+              </DialogDescription>
+            </div>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>

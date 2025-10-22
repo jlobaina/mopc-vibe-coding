@@ -27,6 +27,7 @@ import {
   AlertTriangle,
   CheckCircle2,
   XCircle,
+  X,
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { Department, User } from '@/lib/types/department';
@@ -617,8 +618,18 @@ export default function DepartmentsManagementPage() {
       </Tabs>
 
       {/* Create Department Dialog */}
-      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+      <Dialog open={showCreateDialog}>
         <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+          <button
+            onClick={() => {
+              setShowCreateDialog(false);
+              setCreateParentId(undefined);
+            }}
+            className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 z-10"
+          >
+            <X className="h-4 w-4" />
+            <span className="sr-only">Close</span>
+          </button>
           <DialogHeader>
             <DialogTitle>
               {createParentId ? 'Crear Subdepartamento' : 'Crear Nuevo Departamento'}
@@ -638,8 +649,18 @@ export default function DepartmentsManagementPage() {
       </Dialog>
 
       {/* Edit Department Dialog */}
-      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+      <Dialog open={showEditDialog}>
         <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+          <button
+            onClick={() => {
+              setShowEditDialog(false);
+              setSelectedDepartment(undefined);
+            }}
+            className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 z-10"
+          >
+            <X className="h-4 w-4" />
+            <span className="sr-only">Close</span>
+          </button>
           <DialogHeader>
             <DialogTitle>Editar Departamento</DialogTitle>
           </DialogHeader>
@@ -660,7 +681,7 @@ export default function DepartmentsManagementPage() {
       </Dialog>
 
       {/* Delete Department Dialog */}
-      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+      <AlertDialog open={showDeleteDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
@@ -679,8 +700,15 @@ export default function DepartmentsManagementPage() {
       </AlertDialog>
 
       {/* Statistics Dialog */}
-      <Dialog open={showStatsDialog} onOpenChange={setShowStatsDialog}>
+      <Dialog open={showStatsDialog}>
         <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto">
+          <button
+            onClick={() => setShowStatsDialog(false)}
+            className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 z-10"
+          >
+            <X className="h-4 w-4" />
+            <span className="sr-only">Close</span>
+          </button>
           <DialogHeader>
             <DialogTitle>Estadísticas del Departamento</DialogTitle>
           </DialogHeader>
@@ -691,8 +719,15 @@ export default function DepartmentsManagementPage() {
       </Dialog>
 
       {/* User Transfer Dialog */}
-      <Dialog open={showTransferDialog} onOpenChange={setShowTransferDialog}>
+      <Dialog open={showTransferDialog}>
         <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto">
+          <button
+            onClick={() => setShowTransferDialog(false)}
+            className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 z-10"
+          >
+            <X className="h-4 w-4" />
+            <span className="sr-only">Close</span>
+          </button>
           <DialogHeader>
             <DialogTitle>Transferencia de Usuarios</DialogTitle>
           </DialogHeader>

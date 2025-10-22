@@ -414,7 +414,7 @@ export function DocumentUpload({
       </Card>
 
       {/* Document Details Dialog */}
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+      <Dialog open={isDialogOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Detalles del Documento</DialogTitle>
