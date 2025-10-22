@@ -14,13 +14,59 @@ const baseRoleSchema = z.object({
   isActive: z.boolean().optional(),
 });
 
-// Schema for role creation (all fields except isActive are required)
+// Derived schemas
 const createRoleSchema = baseRoleSchema.omit({ isActive: true }).extend({
   isActive: z.boolean().default(true),
 });
 
-// Schema for role updates (all fields are optional)
 const updateRoleSchema = baseRoleSchema.partial();
+
+// Helper functions
+const handleZodError = (error: z.ZodError) => {
+  return NextResponse.json(
+    {
+      error: 'Datos inválidos',
+      details: error.issues,
+      issues: error.issues.map((issue: any) => ({
+        field: Array.isArray(issue.path) ? issue.path.join('.') : issue.path,
+        message: issue.message,
+        code: issue.code,
+        expected: issue.expected,
+        received: issue.received
+      }))
+    },
+    { status: 400 }
+  );
+};
+
+const buildCreateData = (validatedData: any) => {
+  const { description, isActive, ...requiredData } = validatedData;
+  const createData: any = { ...requiredData };
+
+  if (description !== undefined) createData.description = description;
+  if (isActive !== undefined) createData.isActive = isActive;
+
+  return createData;
+};
+
+const buildUpdateData = (updateData: any) => {
+  const cleanUpdateData: any = {};
+
+  if (updateData.name !== undefined) cleanUpdateData.name = updateData.name;
+  if (updateData.description !== undefined) {
+    cleanUpdateData.description = updateData.description === null ? null : updateData.description;
+  }
+  if (updateData.isActive !== undefined) cleanUpdateData.isActive = updateData.isActive;
+  if (updateData.permissions !== undefined) {
+    cleanUpdateData.permissions = normalizePermissions(updateData.permissions);
+  }
+
+  return cleanUpdateData;
+};
+
+const sanitizeRoleResponse = (role: any) => ({
+  ...role,
+});
 
 // GET /api/roles - List roles with filtering
 export async function GET(request: NextRequest) {
@@ -112,15 +158,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-
-    let validatedData;
-
-    try {
-      validatedData = createRoleSchema.parse(body);
-    } catch (validationError) {
-      console.error('Validation failed:', validationError);
-      throw validationError;
-    }
+    const validatedData = createRoleSchema.parse(body);
 
     // Check if role name already exists
     const existingRole = await prisma.role.findUnique({
@@ -135,24 +173,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Create role
-    const { description, isActive, ...requiredData } = validatedData;
-
-    const createData: any = {
-      ...requiredData,
-    };
-
-    // Only include description if it's not undefined
-    if (description !== undefined) {
-      createData.description = description;
-    }
-
-    // Only include isActive if it's not undefined
-    if (isActive !== undefined) {
-      createData.isActive = isActive;
-    }
-
     const role = await prisma.role.create({
-      data: createData,
+      data: buildCreateData(validatedData),
     });
 
     await logActivity({
@@ -168,29 +190,10 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Remove sensitive data and format response
-    const sanitizedRole = {
-      ...role,
-      userCount: 0, // New roles start with 0 users
-    };
-
-    return NextResponse.json(sanitizedRole, { status: 201 });
+    return NextResponse.json({ ...sanitizeRoleResponse(role), userCount: 0 }, { status: 201 });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        {
-          error: 'Datos inválidos',
-          details: error.issues,
-          issues: error.issues.map((issue: any) => ({
-            field: Array.isArray(issue.path) ? issue.path.join('.') : issue.path,
-            message: issue.message,
-            code: issue.code,
-            expected: issue.expected,
-            received: issue.received
-          }))
-        },
-        { status: 400 }
-      );
+      return handleZodError(error);
     }
 
     console.error('Error creating role:', error);
