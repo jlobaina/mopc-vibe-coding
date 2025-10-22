@@ -117,23 +117,8 @@ const navigationItems: NavItem[] = [
     title: 'Usuarios',
     href: '/users',
     icon: Users,
-    description: 'Administración de usuarios',
-    roles: ['super_admin', 'department_admin'],
-    children: [
-      {
-        title: 'Todos los Usuarios',
-        href: '/users',
-        icon: Users,
-        description: 'Ver todos los usuarios del sistema'
-      },
-      {
-        title: 'Roles y Permisos',
-        href: '/dashboard/roles',
-        icon: Shield,
-        description: 'Gestionar roles y permisos de acceso',
-        roles: ['super_admin']
-      }
-    ]
+    description: 'Administración de usuarios y roles',
+    roles: ['super_admin', 'department_admin']
   },
   {
     title: 'Departamentos',

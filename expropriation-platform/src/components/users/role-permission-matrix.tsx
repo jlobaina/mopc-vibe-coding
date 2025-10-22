@@ -236,10 +236,11 @@ export function RolePermissionMatrix({ roles, onRolesUpdate }: RolePermissionMat
 
     setLoading(true);
     try {
-      const response = await fetch(`/api/roles/${selectedRole.id}`, {
+      const response = await fetch('/api/roles', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          id: selectedRole.id,
           name: roleName.trim(),
           description: roleDescription.trim(),
           permissions: rolePermissions,
@@ -269,7 +270,7 @@ export function RolePermissionMatrix({ roles, onRolesUpdate }: RolePermissionMat
 
     setLoading(true);
     try {
-      const response = await fetch(`/api/roles/${selectedRole.id}`, {
+      const response = await fetch(`/api/roles?id=${selectedRole.id}`, {
         method: 'DELETE',
       });
 
