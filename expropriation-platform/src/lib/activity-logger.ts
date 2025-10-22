@@ -21,6 +21,17 @@ export async function logActivity({
   caseId,
 }: LogActivityParams) {
   try {
+    // Verify that the user exists before logging activity
+    const userExists = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true }
+    });
+
+    if (!userExists) {
+      console.warn(`Cannot log activity: User ${userId} not found`);
+      return;
+    }
+
     await prisma.activity.create({
       data: {
         userId,
@@ -34,6 +45,14 @@ export async function logActivity({
     });
   } catch (error) {
     console.error('Error logging activity:', error);
+    console.error('Activity details:', {
+      userId,
+      action,
+      entityType,
+      entityId,
+      description,
+      hasCaseId: !!caseId
+    });
     // Don't throw the error to avoid breaking the main flow
   }
 }

@@ -255,7 +255,7 @@ export function DataExport() {
   const currentFields = dataTypeFields[exportOptions.dataType] || [];
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog open={isOpen}>
       <DialogTrigger asChild>
         <Button variant="outline" className="gap-2">
           <Download className="h-4 w-4" />

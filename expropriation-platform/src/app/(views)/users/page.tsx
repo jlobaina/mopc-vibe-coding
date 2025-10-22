@@ -43,6 +43,7 @@ import {
   Phone,
   Building,
   Briefcase,
+  X,
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
@@ -704,8 +705,15 @@ export default function UsersManagementPage() {
       </Card>
 
       {/* Create User Dialog */}
-      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+      <Dialog open={showCreateDialog}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <button
+            onClick={() => setShowCreateDialog(false)}
+            className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 z-10"
+          >
+            <X className="h-4 w-4" />
+            <span className="sr-only">Close</span>
+          </button>
           <DialogHeader>
             <DialogTitle>Crear Nuevo Usuario</DialogTitle>
           </DialogHeader>
@@ -720,7 +728,7 @@ export default function UsersManagementPage() {
       </Dialog>
 
       {/* Edit User Dialog */}
-      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+      <Dialog open={showEditDialog}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Editar Usuario</DialogTitle>
@@ -742,7 +750,7 @@ export default function UsersManagementPage() {
       </Dialog>
 
       {/* Delete User Dialog */}
-      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+      <AlertDialog open={showDeleteDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
@@ -761,7 +769,7 @@ export default function UsersManagementPage() {
       </AlertDialog>
 
       {/* Activity History Dialog */}
-      <Dialog open={showActivityDialog} onOpenChange={setShowActivityDialog}>
+      <Dialog open={showActivityDialog}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Historial de Actividad</DialogTitle>
@@ -776,7 +784,7 @@ export default function UsersManagementPage() {
       </Dialog>
 
       {/* Sessions Dialog */}
-      <Dialog open={showSessionsDialog} onOpenChange={setShowSessionsDialog}>
+      <Dialog open={showSessionsDialog}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Sesiones Activas</DialogTitle>
@@ -791,7 +799,7 @@ export default function UsersManagementPage() {
       </Dialog>
 
       {/* Password Management Dialog */}
-      <Dialog open={showPasswordDialog} onOpenChange={setShowPasswordDialog}>
+      <Dialog open={showPasswordDialog}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Gestión de Contraseña</DialogTitle>
@@ -807,8 +815,15 @@ export default function UsersManagementPage() {
       </Dialog>
 
       {/* Roles Management Dialog */}
-      <Dialog open={showRolesDialog} onOpenChange={setShowRolesDialog}>
+      <Dialog open={showRolesDialog}>
         <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+          <button
+            onClick={() => setShowRolesDialog(false)}
+            className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 z-10"
+          >
+            <X className="h-4 w-4" />
+            <span className="sr-only">Close</span>
+          </button>
           <DialogHeader>
             <DialogTitle>Gestión de Roles y Permisos</DialogTitle>
           </DialogHeader>

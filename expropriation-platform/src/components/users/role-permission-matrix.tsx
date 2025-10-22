@@ -48,9 +48,11 @@ import {
   Upload,
   Eye,
   EyeOff,
+  X,
   MoreHorizontal,
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import { PERMISSION_CATEGORIES, DEFAULT_PERMISSIONS, normalizePermissions, RolePermissions } from '@/types/permissions';
 
 interface Role {
   id: string;
@@ -78,59 +80,16 @@ interface RolePermissionMatrixProps {
   onRolesUpdate: () => void;
 }
 
-// Permission categories
-const PERMISSION_CATEGORIES = [
-  {
-    id: 'user_management',
-    name: 'Gestión de Usuarios',
-    icon: <Users className="h-4 w-4" />,
-    permissions: [
-      { key: 'READ_USERS', name: 'Ver Usuarios', description: 'Puede ver la lista de usuarios' },
-      { key: 'CREATE_USERS', name: 'Crear Usuarios', description: 'Puede crear nuevos usuarios' },
-      { key: 'UPDATE_USERS', name: 'Actualizar Usuarios', description: 'Puede modificar usuarios existentes' },
-      { key: 'DELETE_USERS', name: 'Eliminar Usuarios', description: 'Puede eliminar usuarios' },
-      { key: 'MANAGE_PERMISSIONS', name: 'Gestionar Permisos', description: 'Puede asignar y modificar permisos' },
-    ],
-  },
-  {
-    id: 'case_management',
-    name: 'Gestión de Casos',
-    icon: <FileText className="h-4 w-4" />,
-    permissions: [
-      { key: 'READ_CASES', name: 'Ver Casos', description: 'Puede ver los casos del sistema' },
-      { key: 'CREATE_CASES', name: 'Crear Casos', description: 'Puede crear nuevos casos' },
-      { key: 'UPDATE_CASES', name: 'Actualizar Casos', description: 'Puede modificar casos existentes' },
-      { key: 'DELETE_CASES', name: 'Eliminar Casos', description: 'Puede eliminar casos' },
-      { key: 'ASSIGN_CASES', name: 'Asignar Casos', description: 'Puede asignar casos a usuarios' },
-      { key: 'APPROVE_CASES', name: 'Aprobar Casos', description: 'Puede aprobar casos' },
-    ],
-  },
-  {
-    id: 'department_management',
-    name: 'Gestión de Departamentos',
-    icon: <Settings className="h-4 w-4" />,
-    permissions: [
-      { key: 'READ_DEPARTMENTS', name: 'Ver Departamentos', description: 'Puede ver la lista de departamentos' },
-      { key: 'CREATE_DEPARTMENTS', name: 'Crear Departamentos', description: 'Puede crear nuevos departamentos' },
-      { key: 'UPDATE_DEPARTMENTS', name: 'Actualizar Departamentos', description: 'Puede modificar departamentos' },
-      { key: 'DELETE_DEPARTMENTS', name: 'Eliminar Departamentos', description: 'Puede eliminar departamentos' },
-      { key: 'MANAGE_DEPARTMENT_USERS', name: 'Gestionar Usuarios de Departamento', description: 'Puede asignar usuarios a departamentos' },
-    ],
-  },
-  {
-    id: 'system_management',
-    name: 'Gestión del Sistema',
-    icon: <Shield className="h-4 w-4" />,
-    permissions: [
-      { key: 'VIEW_REPORTS', name: 'Ver Reportes', description: 'Puede acceder a reportes del sistema' },
-      { key: 'EXPORT_DATA', name: 'Exportar Datos', description: 'Puede exportar datos del sistema' },
-      { key: 'IMPORT_DATA', name: 'Importar Datos', description: 'Puede importar datos al sistema' },
-      { key: 'SYSTEM_CONFIG', name: 'Configuración del Sistema', description: 'Puede modificar configuraciones del sistema' },
-      { key: 'VIEW_LOGS', name: 'Ver Logs', description: 'Puede ver logs del sistema' },
-      { key: 'MANAGE_BACKUPS', name: 'Gestionar Respaldos', description: 'Puede gestionar respaldos del sistema' },
-    ],
-  },
-];
+// Helper function to get icon for category
+const getCategoryIcon = (categoryId: string) => {
+  switch (categoryId) {
+    case 'user_management': return <Users className="h-4 w-4" />;
+    case 'case_management': return <FileText className="h-4 w-4" />;
+    case 'department_management': return <Settings className="h-4 w-4" />;
+    case 'system_management': return <Shield className="h-4 w-4" />;
+    default: return <Shield className="h-4 w-4" />;
+  }
+};
 
 export function RolePermissionMatrix({ roles, onRolesUpdate }: RolePermissionMatrixProps) {
   const [selectedRole, setSelectedRole] = useState<Role | null>(null);
@@ -146,30 +105,17 @@ export function RolePermissionMatrix({ roles, onRolesUpdate }: RolePermissionMat
 
   // Initialize role permissions state
   React.useEffect(() => {
-    const initialPermissions: Record<string, boolean> = {};
-    PERMISSION_CATEGORIES.forEach(category => {
-      category.permissions.forEach(permission => {
-        initialPermissions[permission.key] = false;
-      });
-    });
-    setRolePermissions(initialPermissions);
+    setRolePermissions(DEFAULT_PERMISSIONS);
   }, []);
 
   // Handle role selection
   const handleRoleSelect = (role: Role) => {
     setSelectedRole(role);
 
-    // Load role permissions
-    const currentPermissions = role.permissions as Record<string, boolean>;
-    const updatedPermissions: Record<string, boolean> = {};
-
-    PERMISSION_CATEGORIES.forEach(category => {
-      category.permissions.forEach(permission => {
-        updatedPermissions[permission.key] = currentPermissions[permission.key] || false;
-      });
-    });
-
-    setRolePermissions(updatedPermissions);
+    // Load role permissions using the shared utility
+    const currentPermissions = role.permissions as Partial<RolePermissions>;
+    const normalizedPermissions = normalizePermissions(currentPermissions);
+    setRolePermissions(normalizedPermissions);
   };
 
   // Handle permission toggle
@@ -201,14 +147,42 @@ export function RolePermissionMatrix({ roles, onRolesUpdate }: RolePermissionMat
 
     setLoading(true);
     try {
+
+      // Ensure all permission values are proper booleans
+      const cleanedPermissions: Record<string, boolean> = {};
+
+      // Let's manually set all permissions to false for testing
+      Object.keys(rolePermissions).forEach(key => {
+        const value = rolePermissions[key];
+
+        // Handle string representations of booleans and actual booleans
+        if (typeof value === 'string') {
+          cleanedPermissions[key] = value === 'true' || value === '1';
+        } else if (typeof value === 'boolean') {
+          cleanedPermissions[key] = value;
+        } else {
+          cleanedPermissions[key] = Boolean(value);
+        }
+      });
+
+      console.log('Final cleaned permissions:', cleanedPermissions);
+
+      const requestData = {
+        name: roleName.trim(),
+        permissions: cleanedPermissions,
+      };
+
+      // Only include description if it's not empty
+      if (roleDescription.trim()) {
+        requestData.description = roleDescription.trim();
+      }
+
+      console.log('Final request data:', requestData);
+
       const response = await fetch('/api/roles', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: roleName.trim(),
-          description: roleDescription.trim(),
-          permissions: rolePermissions,
-        }),
+        body: JSON.stringify(requestData),
       });
 
       if (!response.ok) {
@@ -236,14 +210,24 @@ export function RolePermissionMatrix({ roles, onRolesUpdate }: RolePermissionMat
 
     setLoading(true);
     try {
-      const response = await fetch(`/api/roles/${selectedRole.id}`, {
+      // Use the shared utility to normalize permissions
+      const normalizedPermissions = normalizePermissions(rolePermissions);
+
+      const requestData = {
+        id: selectedRole.id,
+        name: roleName.trim(),
+        permissions: normalizedPermissions,
+      };
+
+      // Only include description if it's not empty
+      if (roleDescription.trim()) {
+        requestData.description = roleDescription.trim();
+      }
+
+      const response = await fetch('/api/roles', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: roleName.trim(),
-          description: roleDescription.trim(),
-          permissions: rolePermissions,
-        }),
+        body: JSON.stringify(requestData),
       });
 
       if (!response.ok) {
@@ -269,7 +253,7 @@ export function RolePermissionMatrix({ roles, onRolesUpdate }: RolePermissionMat
 
     setLoading(true);
     try {
-      const response = await fetch(`/api/roles/${selectedRole.id}`, {
+      const response = await fetch(`/api/roles?id=${selectedRole.id}`, {
         method: 'DELETE',
       });
 
@@ -294,12 +278,20 @@ export function RolePermissionMatrix({ roles, onRolesUpdate }: RolePermissionMat
     setRoleName(`${role.name} (Copia)`);
     setRoleDescription(role.description);
 
-    const currentPermissions = role.permissions as Record<string, boolean>;
+    const currentPermissions = role.permissions as Record<string, any>;
     const updatedPermissions: Record<string, boolean> = {};
 
     PERMISSION_CATEGORIES.forEach(category => {
       category.permissions.forEach(permission => {
-        updatedPermissions[permission.key] = currentPermissions[permission.key] || false;
+        const value = currentPermissions[permission.key];
+        // Ensure we get a proper boolean value
+        if (typeof value === 'boolean') {
+          updatedPermissions[permission.key] = value;
+        } else if (typeof value === 'string') {
+          updatedPermissions[permission.key] = value === 'true' || value === '1';
+        } else {
+          updatedPermissions[permission.key] = false;
+        }
       });
     });
 
@@ -311,13 +303,7 @@ export function RolePermissionMatrix({ roles, onRolesUpdate }: RolePermissionMat
   const resetForm = () => {
     setRoleName('');
     setRoleDescription('');
-    const initialPermissions: Record<string, boolean> = {};
-    PERMISSION_CATEGORIES.forEach(category => {
-      category.permissions.forEach(permission => {
-        initialPermissions[permission.key] = false;
-      });
-    });
-    setRolePermissions(initialPermissions);
+    setRolePermissions(DEFAULT_PERMISSIONS);
   };
 
   // Load role data for editing
@@ -325,12 +311,20 @@ export function RolePermissionMatrix({ roles, onRolesUpdate }: RolePermissionMat
     setRoleName(role.name);
     setRoleDescription(role.description || '');
 
-    const currentPermissions = role.permissions as Record<string, boolean>;
+    const currentPermissions = role.permissions as Record<string, any>;
     const updatedPermissions: Record<string, boolean> = {};
 
     PERMISSION_CATEGORIES.forEach(category => {
       category.permissions.forEach(permission => {
-        updatedPermissions[permission.key] = currentPermissions[permission.key] || false;
+        const value = currentPermissions[permission.key];
+        // Ensure we get a proper boolean value
+        if (typeof value === 'boolean') {
+          updatedPermissions[permission.key] = value;
+        } else if (typeof value === 'string') {
+          updatedPermissions[permission.key] = value === 'true' || value === '1';
+        } else {
+          updatedPermissions[permission.key] = false;
+        }
       });
     });
 
@@ -414,7 +408,7 @@ export function RolePermissionMatrix({ roles, onRolesUpdate }: RolePermissionMat
                       <div key={category.id} className="space-y-3">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            {category.icon}
+                            {getCategoryIcon(category.id)}
                             <h3 className="font-medium">{category.name}</h3>
                           </div>
                           <div className="flex items-center gap-2">
@@ -570,7 +564,7 @@ export function RolePermissionMatrix({ roles, onRolesUpdate }: RolePermissionMat
                 {PERMISSION_CATEGORIES.map((category) => (
                   <div key={category.id} className="space-y-2">
                     <h3 className="font-medium flex items-center gap-2">
-                      {category.icon}
+                      {getCategoryIcon(category.id)}
                       {category.name}
                     </h3>
                     <div className="border rounded-lg overflow-hidden">
@@ -623,24 +617,31 @@ export function RolePermissionMatrix({ roles, onRolesUpdate }: RolePermissionMat
       </Tabs>
 
       {/* Create/Edit Role Dialog */}
-      <Dialog open={showCreateDialog || showEditDialog} onOpenChange={(open) => {
-        if (!open) {
-          setShowCreateDialog(false);
-          setShowEditDialog(false);
-          resetForm();
-        }
-      }}>
+      <Dialog open={showCreateDialog || showEditDialog}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <button
+            onClick={() => {
+              setShowCreateDialog(false);
+              setShowEditDialog(false);
+              resetForm();
+            }}
+            className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 z-10"
+          >
+            <X className="h-4 w-4" />
+            <span className="sr-only">Close</span>
+          </button>
           <DialogHeader>
-            <DialogTitle>
-              {showCreateDialog ? 'Crear Nuevo Rol' : 'Editar Rol'}
-            </DialogTitle>
-            <DialogDescription>
-              {showCreateDialog
-                ? 'Configura los permisos para el nuevo rol'
-                : 'Modifica los permisos del rol existente'
-              }
-            </DialogDescription>
+            <div>
+              <DialogTitle>
+                {showCreateDialog ? 'Crear Nuevo Rol' : 'Editar Rol'}
+              </DialogTitle>
+              <DialogDescription>
+                {showCreateDialog
+                  ? 'Configura los permisos para el nuevo rol'
+                  : 'Modifica los permisos del rol existente'
+                }
+              </DialogDescription>
+            </div>
           </DialogHeader>
 
           <div className="space-y-6">
@@ -674,7 +675,7 @@ export function RolePermissionMatrix({ roles, onRolesUpdate }: RolePermissionMat
                 <div key={category.id} className="space-y-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      {category.icon}
+                      {getCategoryIcon(category.id)}
                       <h4 className="font-medium">{category.name}</h4>
                     </div>
                     <div className="flex items-center gap-2">
@@ -732,18 +733,27 @@ export function RolePermissionMatrix({ roles, onRolesUpdate }: RolePermissionMat
       </Dialog>
 
       {/* Delete Role Dialog */}
-      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+      <Dialog open={showDeleteDialog}>
         <DialogContent>
+          <button
+            onClick={() => setShowDeleteDialog(false)}
+            className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 z-10"
+          >
+            <X className="h-4 w-4" />
+            <span className="sr-only">Close</span>
+          </button>
           <DialogHeader>
-            <DialogTitle>¿Eliminar Rol?</DialogTitle>
-            <DialogDescription>
-              ¿Estás seguro de que deseas eliminar el rol "{selectedRole?.name}"?
-              {selectedRole && (selectedRole.userCount ?? 0) > 0 && (
-                <span className="text-destructive font-medium">
-                  {' '}Este rol está asignado a {(selectedRole.userCount ?? 0)} usuario{(selectedRole.userCount ?? 0) !== 1 ? 's' : ''} y no puede ser eliminado.
-                </span>
-              )}
-            </DialogDescription>
+            <div>
+              <DialogTitle>¿Eliminar Rol?</DialogTitle>
+              <DialogDescription>
+                ¿Estás seguro de que deseas eliminar el rol "{selectedRole?.name}"?
+                {selectedRole && (selectedRole.userCount ?? 0) > 0 && (
+                  <span className="text-destructive font-medium">
+                    {' '}Este rol está asignado a {(selectedRole.userCount ?? 0)} usuario{(selectedRole.userCount ?? 0) !== 1 ? 's' : ''} y no puede ser eliminado.
+                  </span>
+                )}
+              </DialogDescription>
+            </div>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>

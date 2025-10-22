@@ -309,7 +309,7 @@ export function UserPasswordManagement({ userId, userName, userEmail }: UserPass
       </Alert>
 
       {/* Reset Password Dialog */}
-      <Dialog open={showResetDialog} onOpenChange={setShowResetDialog}>
+      <Dialog open={showResetDialog}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Resetear Contraseña</DialogTitle>
@@ -482,7 +482,7 @@ export function UserPasswordManagement({ userId, userName, userEmail }: UserPass
       </Dialog>
 
       {/* Force Password Change Dialog */}
-      <Dialog open={showForceChangeDialog} onOpenChange={setShowForceChangeDialog}>
+      <Dialog open={showForceChangeDialog}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Forzar Cambio de Contraseña</DialogTitle>
