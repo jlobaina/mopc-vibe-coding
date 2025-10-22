@@ -4,13 +4,14 @@ import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
 import { logActivity } from '@/lib/activity-logger';
+import { normalizePermissions, RolePermissions } from '@/types/permissions';
 
-// Schema for role creation
+// Schema for role creation using proper types
 const createRoleSchema = z.object({
   name: z.string().min(1, 'El nombre del rol es requerido'),
   description: z.string().optional(),
-  permissions: z.record(z.boolean()).default({}),
-  isActive: z.boolean().default(true),
+  permissions: z.record(z.boolean()).transform(normalizePermissions),
+  isActive: z.boolean().optional(),
 });
 
 // Schema for role updates
@@ -82,6 +83,7 @@ export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) {
+      console.log('No session user found');
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
 
@@ -95,7 +97,15 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const validatedData = createRoleSchema.parse(body);
+
+    let validatedData;
+
+    try {
+      validatedData = createRoleSchema.parse(body);
+    } catch (validationError) {
+      console.error('Validation failed:', validationError);
+      throw validationError;
+    }
 
     // Check if role name already exists
     const existingRole = await prisma.role.findUnique({
@@ -121,7 +131,7 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Log activity
+
     await logActivity({
       userId: session.user.id,
       action: 'CREATED',
@@ -146,14 +156,24 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Datos inválidos', details: error.errors },
+        {
+          error: 'Datos inválidos',
+          details: error.errors,
+          issues: error.issues.map(issue => ({
+            field: issue.path.join('.'),
+            message: issue.message,
+            code: issue.code,
+            expected: issue.expected,
+            received: issue.received
+          }))
+        },
         { status: 400 }
       );
     }
 
     console.error('Error creating role:', error);
     return NextResponse.json(
-      { error: 'Error al crear rol' },
+      { error: 'Error al crear rol', message: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }
