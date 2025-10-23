@@ -158,16 +158,20 @@ export default function CasesPage() {
   return (
     <div className="container mx-auto py-8">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Gestión de Casos</h1>
           <p className="text-muted-foreground">
             Administra y supervisa todos los casos de expropiación
           </p>
         </div>
-        <Button onClick={() => router.push('/cases/create')}>
-          <Plus className="mr-2 h-4 w-4" />
-          Nuevo Caso
+        <Button
+          onClick={() => router.push('/cases/create')}
+          size="lg"
+          className="bg-primary hover:bg-primary/90"
+        >
+          <Plus className="mr-2 h-5 w-5" />
+          Crear Nuevo Caso
         </Button>
       </div>
 

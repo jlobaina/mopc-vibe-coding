@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Save, Eye } from 'lucide-react'
+import { ArrowLeft, Save, Eye, AlertTriangle, RefreshCw } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -14,10 +14,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Progress } from '@/components/ui/progress'
 import { toast } from 'react-hot-toast'
 
 import { CreateCaseInput } from '@/lib/validations/case'
-import { User, Department } from '@/types/client'
+import { User, Department, Document } from '@/types/client'
 import { CaseCreationDocuments } from '@/components/cases/case-creation-documents'
 
 const CASE_STAGES = [
@@ -73,13 +75,27 @@ interface CaseCreationDocument {
   documentId?: string
 }
 
+const STEPS = [
+  { id: 'basic', title: 'Información Básica', required: ['fileNumber', 'title'] },
+  { id: 'property', title: 'Propiedad', required: ['propertyAddress', 'propertyCity', 'propertyProvince'] },
+  { id: 'owner', title: 'Propietario', required: ['ownerName'] },
+  { id: 'documents', title: 'Documentos', required: [] },
+  { id: 'assignment', title: 'Asignación', required: ['departmentId'] }
+]
+
 export default function CreateCasePage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const [loading, setLoading] = useState(false)
+  const [savingDraft, setSavingDraft] = useState(false)
+  const [currentStep, setCurrentStep] = useState(0)
+  const [showValidationAlert, setShowValidationAlert] = useState(false)
   const [departments, setDepartments] = useState<Department[]>([])
   const [users, setUsers] = useState<User[]>([])
+  const [existingDocuments, setExistingDocuments] = useState<Document[]>([])
+  const [selectedExistingDocuments, setSelectedExistingDocuments] = useState<string[]>([])
   const [documents, setDocuments] = useState<CaseCreationDocument[]>([])
+  const [isDraft, setIsDraft] = useState(false)
   const [formData, setFormData] = useState<CreateCaseInput>({
     fileNumber: '',
     title: '',
@@ -91,6 +107,8 @@ export default function CreateCasePage() {
     propertyProvince: '',
     propertyDescription: '',
     propertyType: '',
+    propertyArea: undefined,
+    propertyCoordinates: '',
     ownerName: '',
     ownerIdentification: '',
     ownerContact: '',
@@ -107,10 +125,12 @@ export default function CreateCasePage() {
     supervisedById: 'UNASSIGNED'
   })
 
-  // Fetch departments
+  // Initialize form data and fetch initial data
   useEffect(() => {
     if (status === 'authenticated') {
       fetchDepartments()
+      generateCaseNumber()
+      fetchExistingDocuments()
     }
   }, [status])
 
@@ -120,6 +140,32 @@ export default function CreateCasePage() {
       fetchDepartmentUsers(formData.departmentId)
     }
   }, [formData.departmentId])
+
+  // Generate case number autofill
+  const generateCaseNumber = async () => {
+    try {
+      const response = await fetch('/api/cases/generate-number')
+      if (response.ok) {
+        const data = await response.json()
+        setFormData(prev => ({ ...prev, fileNumber: data.fileNumber }))
+      }
+    } catch (error) {
+      console.error('Error generating case number:', error)
+    }
+  }
+
+  // Fetch existing documents for selection
+  const fetchExistingDocuments = async () => {
+    try {
+      const response = await fetch('/api/documents?limit=50')
+      if (response.ok) {
+        const data = await response.json()
+        setExistingDocuments(data.documents || [])
+      }
+    } catch (error) {
+      console.error('Error fetching existing documents:', error)
+    }
+  }
 
   const fetchDepartments = async () => {
     try {
@@ -163,6 +209,88 @@ export default function CreateCasePage() {
     const numValue = value === '' ? undefined : parseFloat(value)
     if (!isNaN(numValue as number)) {
       setFormData(prev => ({ ...prev, [field]: numValue }))
+    }
+  }
+
+  // Validation function for current step
+  const validateCurrentStep = () => {
+    const step = STEPS[currentStep]
+    const missingFields = step.required.filter(field => {
+      const value = formData[field as keyof CreateCaseInput]
+      return !value || (typeof value === 'string' && value.trim() === '')
+    })
+
+    if (missingFields.length > 0) {
+      setShowValidationAlert(true)
+      return false
+    }
+
+    setShowValidationAlert(false)
+    return true
+  }
+
+  // Navigation handlers
+  const handleNext = () => {
+    if (validateCurrentStep()) {
+      if (currentStep < STEPS.length - 1) {
+        setCurrentStep(currentStep + 1)
+      }
+    }
+  }
+
+  const handlePrevious = () => {
+    if (currentStep > 0) {
+      setCurrentStep(currentStep - 1)
+    }
+    setShowValidationAlert(false)
+  }
+
+  // Save draft functionality
+  const saveDraft = async () => {
+    setSavingDraft(true)
+    try {
+      const draftData = {
+        ...formData,
+        isDraft: true,
+        documents: documents.map(doc => ({
+          title: doc.title,
+          description: doc.description,
+          documentType: doc.documentType,
+          category: doc.category,
+          securityLevel: doc.securityLevel,
+          tags: doc.tags
+        })),
+        existingDocuments: selectedExistingDocuments
+      }
+
+      // Save to localStorage for now (in production, this would be saved to database)
+      localStorage.setItem('caseDraft', JSON.stringify(draftData))
+      setIsDraft(true)
+      toast.success('Borrador guardado exitosamente')
+    } catch (error) {
+      console.error('Error saving draft:', error)
+      toast.error('Error al guardar el borrador')
+    } finally {
+      setSavingDraft(false)
+    }
+  }
+
+  // Load draft if exists
+  const loadDraft = () => {
+    try {
+      const draftData = localStorage.getItem('caseDraft')
+      if (draftData) {
+        const draft = JSON.parse(draftData)
+        setFormData(draft)
+        if (draft.existingDocuments) {
+          setSelectedExistingDocuments(draft.existingDocuments)
+        }
+        setIsDraft(true)
+        toast.success('Borrador cargado exitosamente')
+      }
+    } catch (error) {
+      console.error('Error loading draft:', error)
+      toast.error('Error al cargar el borrador')
     }
   }
 
@@ -218,17 +346,45 @@ export default function CreateCasePage() {
       const newCase = await caseResponse.json()
       toast.success('Caso creado exitosamente')
 
-      // If there are documents, upload them
+      // Link existing documents
+      if (selectedExistingDocuments.length > 0) {
+        await linkExistingDocuments(newCase.id)
+      }
+
+      // If there are new documents, upload them
       if (documents.length > 0) {
         await uploadDocuments(newCase.id)
       }
 
+      // Clear draft after successful creation
+      localStorage.removeItem('caseDraft')
+      toast.success('Caso creado exitosamente')
       router.push(`/cases/${newCase.id}`)
     } catch (error) {
       console.error('Error creating case:', error)
       toast.error(error instanceof Error ? error.message : 'Error al crear el caso')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const linkExistingDocuments = async (caseId: string) => {
+    try {
+      const linkPromises = selectedExistingDocuments.map(docId =>
+        fetch(`/api/cases/${caseId}/documents/link`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ documentId: docId }),
+        })
+      )
+
+      await Promise.all(linkPromises)
+      toast.success(`${selectedExistingDocuments.length} documento(s) existente(s) vinculado(s)`)
+    } catch (error) {
+      console.error('Error linking existing documents:', error)
+      toast.error('Error al vincular documentos existentes')
     }
   }
 
@@ -337,30 +493,80 @@ export default function CreateCasePage() {
   return (
     <div className="container mx-auto py-8">
       {/* Header */}
-      <div className="flex items-center gap-4 mb-8">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => router.back()}
-        >
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Crear Nuevo Caso</h1>
-          <p className="text-muted-foreground">
-            Complete el formulario para crear un nuevo caso de expropiación
-          </p>
+      <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center gap-4">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => router.back()}
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Crear Nuevo Caso</h1>
+            <p className="text-muted-foreground">
+              Complete el formulario paso a paso para crear un nuevo caso de expropiación
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          {isDraft && (
+            <Badge variant="secondary" className="bg-orange-100 text-orange-800">
+              Borrador
+            </Badge>
+          )}
+          <Button
+            variant="outline"
+            onClick={loadDraft}
+            disabled={loading || savingDraft}
+          >
+            <RefreshCw className="mr-2 h-4 w-4" />
+            Cargar Borrador
+          </Button>
+          <Button
+            variant="outline"
+            onClick={saveDraft}
+            disabled={loading || savingDraft}
+          >
+            <Save className="mr-2 h-4 w-4" />
+            {savingDraft ? 'Guardando...' : 'Guardar Borrador'}
+          </Button>
         </div>
       </div>
 
+      {/* Progress Bar */}
+      <div className="mb-8">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-sm font-medium">Paso {currentStep + 1} de {STEPS.length}</span>
+          <span className="text-sm text-muted-foreground">{STEPS[currentStep].title}</span>
+        </div>
+        <Progress value={((currentStep + 1) / STEPS.length) * 100} className="w-full" />
+      </div>
+
+      {/* Validation Alert */}
+      {showValidationAlert && (
+        <Alert className="mb-6 border-orange-200 bg-orange-50">
+          <AlertTriangle className="h-4 w-4 text-orange-600" />
+          <AlertTitle className="text-orange-800">Campos requeridos faltantes</AlertTitle>
+          <AlertDescription className="text-orange-700">
+            Por favor complete todos los campos requeridos antes de continuar al siguiente paso.
+          </AlertDescription>
+        </Alert>
+      )}
+
       <form onSubmit={handleSubmit}>
-        <Tabs defaultValue="basic" className="space-y-6">
+        <Tabs value={STEPS[currentStep].id} className="space-y-6">
           <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="basic">Información Básica</TabsTrigger>
-            <TabsTrigger value="property">Propiedad</TabsTrigger>
-            <TabsTrigger value="owner">Propietario</TabsTrigger>
-            <TabsTrigger value="documents">Documentos</TabsTrigger>
-            <TabsTrigger value="assignment">Asignación</TabsTrigger>
+            {STEPS.map((step, index) => (
+              <TabsTrigger
+                key={step.id}
+                value={step.id}
+                disabled={index > currentStep}
+                className={index <= currentStep ? "text-primary" : "text-muted-foreground"}
+              >
+                {step.title}
+              </TabsTrigger>
+            ))}
           </TabsList>
 
           {/* Basic Information Tab */}
@@ -376,13 +582,26 @@ export default function CreateCasePage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="fileNumber">Número de Expediente *</Label>
-                    <Input
-                      id="fileNumber"
-                      value={formData.fileNumber}
-                      onChange={(e) => handleInputChange('fileNumber', e.target.value)}
-                      placeholder="EXP-2024-001"
-                      required
-                    />
+                    <div className="flex gap-2">
+                      <Input
+                        id="fileNumber"
+                        value={formData.fileNumber}
+                        onChange={(e) => handleInputChange('fileNumber', e.target.value)}
+                        placeholder="EXP-2024-001"
+                        required
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={generateCaseNumber}
+                        title="Generar número automáticamente"
+                      >
+                        <RefreshCw className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Puede generar automáticamente o ingresar manualmente
+                    </p>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="priority">Prioridad</Label>
@@ -558,6 +777,21 @@ export default function CreateCasePage() {
                     Formato: latitud,longitud (ej: 18.4802,-69.9388)
                   </p>
                 </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="estimatedValue">Valor Estimado (DOP)</Label>
+                  <Input
+                    id="estimatedValue"
+                    type="number"
+                    step="0.01"
+                    value={formData.estimatedValue || ''}
+                    onChange={(e) => handleNumberChange('estimatedValue', e.target.value)}
+                    placeholder="5000000"
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    Valor estimado de la propiedad para fines de expropiación
+                  </p>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
@@ -624,28 +858,15 @@ export default function CreateCasePage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="ownerEmail">Email</Label>
-                    <Input
-                      id="ownerEmail"
-                      type="email"
-                      value={formData.ownerEmail}
-                      onChange={(e) => handleInputChange('ownerEmail', e.target.value)}
-                      placeholder="juan.perez@email.com"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="estimatedValue">Valor Estimado (DOP)</Label>
-                    <Input
-                      id="estimatedValue"
-                      type="number"
-                      step="0.01"
-                      value={formData.estimatedValue || ''}
-                      onChange={(e) => handleNumberChange('estimatedValue', e.target.value)}
-                      placeholder="5000000"
-                    />
-                  </div>
+                <div className="space-y-2">
+                  <Label htmlFor="ownerEmail">Email</Label>
+                  <Input
+                    id="ownerEmail"
+                    type="email"
+                    value={formData.ownerEmail}
+                    onChange={(e) => handleInputChange('ownerEmail', e.target.value)}
+                    placeholder="juan.perez@email.com"
+                  />
                 </div>
 
                 <div className="space-y-2">
@@ -700,12 +921,60 @@ export default function CreateCasePage() {
 
           {/* Documents Tab */}
           <TabsContent value="documents">
-            <CaseCreationDocuments
-              documents={documents}
-              onDocumentsChange={setDocuments}
-              disabled={loading}
-              maxFiles={10}
-            />
+            <div className="space-y-6">
+              {/* Existing Documents Selection */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Seleccionar Documentos Existentes</CardTitle>
+                  <CardDescription>
+                    Elija documentos existentes de la plataforma para asociar a este caso
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {existingDocuments.length > 0 ? (
+                    <div className="space-y-4 max-h-64 overflow-y-auto">
+                      {existingDocuments.map((doc) => (
+                        <div key={doc.id} className="flex items-center space-x-3 p-3 border rounded-lg">
+                          <input
+                            type="checkbox"
+                            id={`doc-${doc.id}`}
+                            checked={selectedExistingDocuments.includes(doc.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedExistingDocuments(prev => [...prev, doc.id])
+                              } else {
+                                setSelectedExistingDocuments(prev => prev.filter(id => id !== doc.id))
+                              }
+                            }}
+                            className="rounded"
+                          />
+                          <div className="flex-1">
+                            <label htmlFor={`doc-${doc.id}`} className="cursor-pointer">
+                              <div className="font-medium text-sm">{doc.title}</div>
+                              <div className="text-xs text-muted-foreground">
+                                {doc.fileName} • {(doc.fileSize / 1024 / 1024).toFixed(2)} MB • {doc.documentType}
+                              </div>
+                            </label>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-muted-foreground text-center py-4">
+                      No hay documentos existentes disponibles
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* New Document Upload */}
+              <CaseCreationDocuments
+                documents={documents}
+                onDocumentsChange={setDocuments}
+                disabled={loading}
+                maxFiles={10}
+              />
+            </div>
           </TabsContent>
 
           {/* Assignment Tab */}
@@ -790,21 +1059,57 @@ export default function CreateCasePage() {
         </Tabs>
 
         {/* Actions */}
-        <div className="flex items-center justify-end gap-4 mt-8">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => router.back()}
-          >
-            Cancelar
-          </Button>
-          <Button
-            type="submit"
-            disabled={loading}
-          >
-            <Save className="mr-2 h-4 w-4" />
-            {loading ? 'Creando...' : 'Crear Caso'}
-          </Button>
+        <div className="flex items-center justify-between mt-8">
+          <div className="flex items-center gap-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => router.back()}
+              disabled={loading || savingDraft}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={saveDraft}
+              disabled={loading || savingDraft}
+            >
+              <Save className="mr-2 h-4 w-4" />
+              {savingDraft ? 'Guardando...' : 'Guardar Borrador'}
+            </Button>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {currentStep > 0 && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handlePrevious}
+                disabled={loading || savingDraft}
+              >
+                Anterior
+              </Button>
+            )}
+
+            {currentStep < STEPS.length - 1 ? (
+              <Button
+                type="button"
+                onClick={handleNext}
+                disabled={loading || savingDraft}
+              >
+                Siguiente
+              </Button>
+            ) : (
+              <Button
+                type="submit"
+                disabled={loading || savingDraft}
+              >
+                <Save className="mr-2 h-4 w-4" />
+                {loading ? 'Creando...' : 'Crear Caso'}
+              </Button>
+            )}
+          </div>
         </div>
       </form>
     </div>
