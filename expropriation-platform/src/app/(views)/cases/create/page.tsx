@@ -157,9 +157,9 @@ export default function CreateCasePage() {
     } catch (error) {
       console.error('Couldn\'t get today\'s case count:', error)
     }
+    const indexString = index.toString().padStart(2, '0');
 
-    const fileNumber = `EXP-${year}-${month}-${day}-${index}`
-    return fileNumber
+    return `EXP-${year}-${month}-${day}-${indexString}`;
   }
 
   // Fetch existing documents for selection
