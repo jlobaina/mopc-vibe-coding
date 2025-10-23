@@ -129,7 +129,6 @@ export default function CreateCasePage() {
   useEffect(() => {
     if (status === 'authenticated') {
       fetchDepartments()
-      generateCaseNumber()
       fetchExistingDocuments()
     }
   }, [status])
@@ -141,17 +140,26 @@ export default function CreateCasePage() {
     }
   }, [formData.departmentId])
 
-  // Generate case number autofill
+  // Generate case number locally as fallback
   const generateCaseNumber = async () => {
+    const now = new Date()
+    const year = now.getFullYear()
+    const month = (now.getMonth() + 1).toString().padStart(2, '0')
+    const day = now.getDate().toString().padStart(2, '0')
+    let index = 1;
     try {
-      const response = await fetch('/api/cases/generate-number')
+      const response = await fetch('/api/cases')
       if (response.ok) {
         const data = await response.json()
-        setFormData(prev => ({ ...prev, fileNumber: data.fileNumber }))
+        // Use the count from the endpoint
+        index = (data.pagination.total || 0) + 1
       }
     } catch (error) {
-      console.error('Error generating case number:', error)
+      console.error('Couldn\'t get today\'s case count:', error)
     }
+
+    const fileNumber = `EXP-${year}-${month}-${day}-${index}`
+    return fileNumber
   }
 
   // Fetch existing documents for selection
@@ -587,13 +595,16 @@ export default function CreateCasePage() {
                         id="fileNumber"
                         value={formData.fileNumber}
                         onChange={(e) => handleInputChange('fileNumber', e.target.value)}
-                        placeholder="EXP-2024-001"
+                        placeholder="EXP-2024-10-23-1"
                         required
                       />
                       <Button
                         type="button"
                         variant="outline"
-                        onClick={generateCaseNumber}
+                        onClick={async () => {
+                          const fileNumber = await generateCaseNumber()
+                          setFormData(prev => ({ ...prev, fileNumber }))
+                        }}
                         title="Generar número automáticamente"
                       >
                         <RefreshCw className="h-4 w-4" />

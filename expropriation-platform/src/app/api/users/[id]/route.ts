@@ -46,8 +46,6 @@ export async function GET(
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
 
-    const { id } = params;
-
     const user = await prisma.user.findUnique({
       where: { id },
       include: {

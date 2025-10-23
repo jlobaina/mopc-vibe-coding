@@ -38,6 +38,8 @@ export async function GET(request: NextRequest) {
       startDateTo,
       expectedEndDateFrom,
       expectedEndDateTo,
+      createdAtFrom,
+      createdAtTo,
       ownerName,
       propertyAddress,
       fileNumber,
@@ -97,6 +99,13 @@ export async function GET(request: NextRequest) {
       where.expectedEndDate = {}
       if (expectedEndDateFrom) {where.expectedEndDate.gte = expectedEndDateFrom}
       if (expectedEndDateTo) {where.expectedEndDate.lte = expectedEndDateTo}
+    }
+
+    // Creation date filters
+    if (createdAtFrom || createdAtTo) {
+      where.createdAt = {}
+      if (createdAtFrom) {where.createdAt.gte = createdAtFrom}
+      if (createdAtTo) {where.createdAt.lte = createdAtTo}
     }
 
     // Apply department-based access control

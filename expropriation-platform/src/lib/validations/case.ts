@@ -237,6 +237,8 @@ export const CaseSearchSchema = z.object({
   startDateTo: z.coerce.date().optional(),
   expectedEndDateFrom: z.coerce.date().optional(),
   expectedEndDateTo: z.coerce.date().optional(),
+  createdAtFrom: z.coerce.date().optional(),
+  createdAtTo: z.coerce.date().optional(),
   ownerName: z.string().optional(),
   propertyAddress: z.string().optional(),
   fileNumber: z.string().optional(),
