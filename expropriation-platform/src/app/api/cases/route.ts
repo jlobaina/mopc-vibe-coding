@@ -46,7 +46,8 @@ export async function GET(request: NextRequest) {
       page,
       limit,
       sortBy,
-      sortOrder
+      sortOrder,
+      includeDrafts
     } = searchResult.data
 
     // Get user to check permissions
@@ -65,6 +66,11 @@ export async function GET(request: NextRequest) {
     // Build where clause based on user permissions and filters
     const where: any = {
       deletedAt: null
+    }
+
+    // Only filter out drafts unless explicitly requested
+    if (!includeDrafts) {
+      where.isDraft = false
     }
 
     // Apply filters
@@ -218,12 +224,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const body = await request.json()
-    const validationResult = CreateCaseSchema.safeParse(body)
+    const requestBody = await request.json()
+    const validationResult = CreateCaseSchema.safeParse(requestBody)
 
     if (!validationResult.success) {
       return NextResponse.json(
-        { error: 'Invalid input', details: validationResult.error.errors },
+        { error: 'Invalid input', details: validationResult.error },
         { status: 400 }
       )
     }
@@ -241,7 +247,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if user has permission to create cases
-    const role = user.role.name as string
+    const role = user.role.name.toUpperCase() as string
     if (!['SUPER_ADMIN', 'DEPARTMENT_ADMIN', 'ANALYST', 'SUPERVISOR'].includes(role)) {
       return NextResponse.json(
         { error: 'Insufficient permissions to create cases' },
@@ -371,34 +377,34 @@ export async function POST(request: NextRequest) {
       userId: user.id,
       action: 'CREATED',
       entityType: 'case',
-      entityId: newCase.id,
-      description: `Created case ${newCase.fileNumber}: ${newCase.title}`,
+      entityId: requestBody.id,
+      description: `Created case ${requestBody.fileNumber}: ${requestBody.title}`,
       metadata: {
-        caseId: newCase.id,
-        fileNumber: newCase.fileNumber,
-        title: newCase.title,
-        departmentId: newCase.departmentId
+        caseId: requestBody.id,
+        fileNumber: requestBody.fileNumber,
+        title: requestBody.title,
+        departmentId: requestBody.departmentId
       }
     })
 
     // Create case history entry
     await prisma.caseHistory.create({
       data: {
-        caseId: newCase.id,
+        caseId: requestBody.id,
         changedById: user.id,
         action: 'case_created',
         newValue: JSON.stringify({
-          fileNumber: newCase.fileNumber,
-          title: newCase.title,
-          status: newCase.status,
-          stage: newCase.currentStage,
-          department: newCase.department.name
+          fileNumber: requestBody.fileNumber,
+          title: requestBody.title,
+          status: requestBody.status,
+          stage: requestBody.currentStage,
+          department: requestBody.department.name
         }),
         notes: 'Caso creado inicialmente'
       }
     })
 
-    return NextResponse.json(newCase, { status: 201 })
+    return NextResponse.json(requestBody, { status: 201 })
   } catch (error) {
     console.error('Error creating case:', error)
     return NextResponse.json(

@@ -21,19 +21,28 @@ import { toast } from 'react-hot-toast'
 import { CreateCaseInput } from '@/lib/validations/case'
 import { User, Department, Document } from '@/types/client'
 import { CaseCreationDocuments } from '@/components/cases/case-creation-documents'
+import { Badge } from '@/components/ui/badge'
 
 const CASE_STAGES = [
-  { value: 'INITIAL_REVIEW', label: 'Revisión Inicial' },
-  { value: 'LEGAL_REVIEW', label: 'Revisión Legal' },
-  { value: 'TECHNICAL_EVALUATION', label: 'Evaluación Técnica' },
-  { value: 'APPRAISAL', label: 'Tasación' },
-  { value: 'NEGOTIATION', label: 'Negociación' },
-  { value: 'DOCUMENTATION', label: 'Documentación' },
-  { value: 'PUBLIC_CONSULTATION', label: 'Consulta Pública' },
-  { value: 'APPROVAL', label: 'Aprobación' },
-  { value: 'PAYMENT', label: 'Pago' },
-  { value: 'TRANSFER', label: 'Transferencia' },
-  { value: 'FINAL_CLOSURE', label: 'Cierre Final' }
+  { value: 'RECEPCION_SOLICITUD', label: 'Recepción de Solicitud' },
+  { value: 'VERIFICACION_REQUISITOS', label: 'Verificación de Requisitos' },
+  { value: 'CARGA_DOCUMENTOS', label: 'Carga de Documentos' },
+  { value: 'ASIGNACION_ANALISTA', label: 'Asignación de Analista' },
+  { value: 'ANALISIS_PRELIMINAR', label: 'Análisis Preliminar' },
+  { value: 'NOTIFICACION_PROPIETARIO', label: 'Notificación al Propietario' },
+  { value: 'PERITAJE_TECNICO', label: 'Peritaje Técnico' },
+  { value: 'DETERMINACION_VALOR', label: 'Determinación de Valor' },
+  { value: 'OFERTA_COMPRA', label: 'Oferta de Compra' },
+  { value: 'NEGOCIACION', label: 'Negociación' },
+  { value: 'APROBACION_ACUERDO', label: 'Aprobación de Acuerdo' },
+  { value: 'ELABORACION_ESCRITURA', label: 'Elaboración de Escritura' },
+  { value: 'FIRMA_DOCUMENTOS', label: 'Firma de Documentos' },
+  { value: 'REGISTRO_PROPIEDAD', label: 'Registro de Propiedad' },
+  { value: 'DESEMBOLSO_PAGO', label: 'Desembolso y Pago' },
+  { value: 'ENTREGA_INMUEBLE', label: 'Entrega del Inmueble' },
+  { value: 'CIERRE_ARCHIVO', label: 'Cierre de Archivo' },
+  { value: 'SUSPENDED', label: 'Suspendido' },
+  { value: 'CANCELLED', label: 'Cancelado' }
 ]
 
 const PRIORITIES = [
@@ -101,7 +110,7 @@ export default function CreateCasePage() {
     title: '',
     description: '',
     priority: 'MEDIUM',
-    currentStage: 'INITIAL_REVIEW',
+    currentStage: 'RECEPCION_SOLICITUD',
     propertyAddress: '',
     propertyCity: '',
     propertyProvince: '',
@@ -257,27 +266,36 @@ export default function CreateCasePage() {
   const saveDraft = async () => {
     setSavingDraft(true)
     try {
+      // Use the draft endpoint with relaxed validation
       const draftData = {
         ...formData,
-        isDraft: true,
-        documents: documents.map(doc => ({
-          title: doc.title,
-          description: doc.description,
-          documentType: doc.documentType,
-          category: doc.category,
-          securityLevel: doc.securityLevel,
-          tags: doc.tags
-        })),
-        existingDocuments: selectedExistingDocuments
+        // Let the endpoint handle default values
       }
 
-      // Save to localStorage for now (in production, this would be saved to database)
-      localStorage.setItem('caseDraft', JSON.stringify(draftData))
+      const response = await fetch('/api/cases/drafts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(draftData),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to save draft')
+      }
+
+      const newDraft = await response.json()
       setIsDraft(true)
+
+      // Clear the form after saving draft
+      localStorage.removeItem('caseDraft')
+
       toast.success('Borrador guardado exitosamente')
+      router.push(`/cases/${newDraft.id}`)
     } catch (error) {
       console.error('Error saving draft:', error)
-      toast.error('Error al guardar el borrador')
+      toast.error(error instanceof Error ? error.message : 'Error al guardar el borrador')
     } finally {
       setSavingDraft(false)
     }
@@ -337,13 +355,18 @@ export default function CreateCasePage() {
 
     setLoading(true)
     try {
-      // First, create the case
+      // First, create the case with isDraft = false using the standard endpoint
+      const caseData = {
+        ...formData,
+        isDraft: false
+      }
+
       const caseResponse = await fetch('/api/cases', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(caseData),
       })
 
       if (!caseResponse.ok) {
