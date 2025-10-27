@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   Table,
   TableBody,
@@ -48,6 +49,7 @@ interface CaseItem {
   progressPercentage: number;
   createdAt: string;
   expectedEndDate: string | null;
+  isDraft?: boolean;
   department: {
     id: string;
     name: string;
@@ -166,16 +168,34 @@ function CaseTableRow({ caseItem, type }: { caseItem: CaseItem; type: string }) 
   };
 
   return (
-    <TableRow className="hover:bg-gray-50">
+    <TableRow className={`hover:bg-gray-50 ${caseItem.isDraft ? 'bg-gray-50/30' : ''}`}>
       <TableCell>
         <div className="flex items-center space-x-3">
           <div className={URGENCY_COLORS[caseItem.urgency || 'low']}>
             {getUrgencyIcon()}
           </div>
-          <div>
-            <div className="font-medium">{caseItem.fileNumber}</div>
-            <div className="text-sm text-gray-500 max-w-xs truncate">
-              {caseItem.title}
+          <div className="flex items-center gap-2">
+            {caseItem.isDraft && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex items-center justify-center">
+                      <FileText className="h-4 w-4 text-gray-400 cursor-help" />
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Este caso es un borrador</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+            <div>
+              <div className={`font-medium ${caseItem.isDraft ? 'text-gray-500 italic' : ''}`}>
+                {caseItem.fileNumber}
+              </div>
+              <div className={`text-sm max-w-xs truncate ${caseItem.isDraft ? 'text-gray-400' : 'text-gray-500'}`}>
+                {caseItem.title}
+              </div>
             </div>
           </div>
         </div>

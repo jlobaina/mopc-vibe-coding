@@ -47,7 +47,6 @@ export async function GET(request: NextRequest) {
       limit,
       sortBy,
       sortOrder,
-      includeDrafts
     } = searchResult.data
 
     // Get user to check permissions
@@ -66,11 +65,6 @@ export async function GET(request: NextRequest) {
     // Build where clause based on user permissions and filters
     const where: any = {
       deletedAt: null
-    }
-
-    // Only filter out drafts unless explicitly requested
-    if (!includeDrafts) {
-      where.isDraft = false
     }
 
     // Apply filters

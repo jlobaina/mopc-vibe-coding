@@ -3,12 +3,13 @@
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { Plus, Search, Filter, Download, RefreshCw } from 'lucide-react'
+import { Plus, Search, Filter, Download, RefreshCw, FileText } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -288,20 +289,38 @@ export default function CasesPage() {
                   {cases.map((case_) => (
                     <TableRow
                       key={case_.id}
-                      className="cursor-pointer hover:bg-muted/50"
+                      className={`cursor-pointer hover:bg-muted/50 ${case_.isDraft ? 'bg-gray-50/30' : ''}`}
                       onClick={() => router.push(`/cases/${case_.id}`)}
                     >
                       <TableCell className="font-medium">
                         {case_.fileNumber}
                       </TableCell>
                       <TableCell>
-                        <div>
-                          <div className="font-medium">{case_.title}</div>
-                          {case_.description && (
-                            <div className="text-sm text-muted-foreground truncate max-w-xs">
-                              {case_.description}
-                            </div>
+                        <div className="flex items-center gap-2">
+                          {case_.isDraft && (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <div className="flex items-center justify-center">
+                                    <FileText className="h-4 w-4 text-gray-400 cursor-help" />
+                                  </div>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Este caso es un borrador</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
                           )}
+                          <div>
+                            <div className={`font-medium ${case_.isDraft ? 'text-gray-500 italic' : ''}`}>
+                              {case_.title}
+                            </div>
+                            {case_.description && (
+                              <div className={`text-sm truncate max-w-xs ${case_.isDraft ? 'text-gray-400' : 'text-muted-foreground'}`}>
+                                {case_.description}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </TableCell>
                       <TableCell>{case_.ownerName}</TableCell>

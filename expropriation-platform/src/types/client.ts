@@ -41,6 +41,7 @@ export interface Case {
   startDate: Date;
   expectedEndDate?: Date;
   actualEndDate?: Date;
+  isDraft?: boolean;
   propertyAddress: string;
   propertyCity: string;
   propertyProvince: string;
