@@ -130,6 +130,7 @@ export function CaseForm({ mode, caseId, initialData }: CaseFormProps) {
   const [selectedExistingDocuments, setSelectedExistingDocuments] = useState<string[]>([])
   const [documents, setDocuments] = useState<CaseCreationDocument[]>([])
   const [isDraft, setIsDraft] = useState(false)
+  const [fieldErrors, setFieldErrors] = useState<Set<string>>(new Set())
 
   // Form data state - handles both create and edit modes
   const [formData, setFormData] = useState<CreateCaseInput | UpdateCaseInput>(() => {
@@ -366,13 +367,38 @@ export function CaseForm({ mode, caseId, initialData }: CaseFormProps) {
       value = undefined
     }
     setFormData(prev => ({ ...prev, [field]: value }))
+
+    // Clear field error when user changes value
+    if (fieldErrors.has(field)) {
+      setFieldErrors(prev => {
+        const newErrors = new Set(prev)
+        newErrors.delete(field)
+        return newErrors
+      })
+      setShowValidationAlert(false)
+    }
   }
 
   const handleNumberChange = (field: keyof (CreateCaseInput | UpdateCaseInput), value: string) => {
     const numValue = value === '' ? undefined : parseFloat(value)
     if (!isNaN(numValue as number)) {
       setFormData(prev => ({ ...prev, [field]: numValue }))
+
+      // Clear field error when user starts typing
+      if (fieldErrors.has(field)) {
+        setFieldErrors(prev => {
+          const newErrors = new Set(prev)
+          newErrors.delete(field)
+          return newErrors
+        })
+        setShowValidationAlert(false)
+      }
     }
+  }
+
+  // Helper function to check if a field has an error
+  const hasFieldError = (field: string) => {
+    return fieldErrors.has(field)
   }
 
   // Validation function for current step (create mode only)
@@ -386,10 +412,12 @@ export function CaseForm({ mode, caseId, initialData }: CaseFormProps) {
     })
 
     if (missingFields.length > 0) {
+      setFieldErrors(new Set(missingFields))
       setShowValidationAlert(true)
       return false
     }
 
+    setFieldErrors(new Set())
     setShowValidationAlert(false)
     return true
   }
@@ -399,6 +427,7 @@ export function CaseForm({ mode, caseId, initialData }: CaseFormProps) {
     if (validateCurrentStep()) {
       if (currentStep < STEPS.length - 1) {
         setCurrentStep(currentStep + 1)
+        setFieldErrors(new Set()) // Clear errors when moving to next step
       }
     }
   }
@@ -408,6 +437,7 @@ export function CaseForm({ mode, caseId, initialData }: CaseFormProps) {
       setCurrentStep(currentStep - 1)
     }
     setShowValidationAlert(false)
+    setFieldErrors(new Set())
   }
 
   // Save draft functionality (create mode only)
@@ -449,32 +479,25 @@ export function CaseForm({ mode, caseId, initialData }: CaseFormProps) {
     e.preventDefault()
 
     // Validation
-    if (!formData.fileNumber?.trim()) {
-      toast.error('El número de expediente es requerido')
-      return
-    }
-    if (!formData.title?.trim()) {
-      toast.error('El título es requerido')
-      return
-    }
-    if (!formData.propertyAddress?.trim()) {
-      toast.error('La dirección de la propiedad es requerida')
-      return
-    }
-    if (!formData.propertyCity?.trim()) {
-      toast.error('La ciudad es requerida')
-      return
-    }
-    if (!formData.propertyProvince?.trim()) {
-      toast.error('La provincia es requerida')
-      return
-    }
-    if (!formData.ownerName?.trim()) {
-      toast.error('El nombre del propietario es requerido')
-      return
-    }
-    if (!formData.departmentId) {
-      toast.error('El departamento es requerido')
+    const requiredFields = ['fileNumber', 'title', 'propertyAddress', 'propertyCity', 'propertyProvince', 'ownerName', 'departmentId']
+    const missingFields = requiredFields.filter(field => {
+      const value = formData[field as keyof CreateCaseInput]
+      return !value || (typeof value === 'string' && value.trim() === '')
+    })
+
+    if (missingFields.length > 0) {
+      setFieldErrors(new Set(missingFields))
+      if (mode === 'create') {
+        // Switch to the first step with missing fields
+        const firstMissingStep = STEPS.findIndex(step =>
+          step.required.some(field => missingFields.includes(field))
+        )
+        if (firstMissingStep !== -1 && firstMissingStep !== currentStep) {
+          setCurrentStep(firstMissingStep)
+        }
+        setShowValidationAlert(true)
+      }
+      toast.error('Por favor complete todos los campos requeridos')
       return
     }
 
@@ -774,7 +797,9 @@ export function CaseForm({ mode, caseId, initialData }: CaseFormProps) {
               <CardContent className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="fileNumber">Número de Expediente *</Label>
+                    <Label htmlFor="fileNumber" className={hasFieldError('fileNumber') ? 'text-destructive' : ''}>
+                      Número de Expediente *
+                    </Label>
                     <div className="flex gap-2">
                       <Input
                         id="fileNumber"
@@ -824,7 +849,9 @@ export function CaseForm({ mode, caseId, initialData }: CaseFormProps) {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="title">Título del Caso *</Label>
+                  <Label htmlFor="title" className={hasFieldError('title') ? 'text-destructive' : ''}>
+                    Título del Caso *
+                  </Label>
                   <Input
                     id="title"
                     value={formData.title || ''}
@@ -957,7 +984,9 @@ export function CaseForm({ mode, caseId, initialData }: CaseFormProps) {
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="space-y-2">
-                  <Label htmlFor="propertyAddress">Dirección de la Propiedad *</Label>
+                  <Label htmlFor="propertyAddress" className={hasFieldError('propertyAddress') ? 'text-destructive' : ''}>
+                    Dirección de la Propiedad *
+                  </Label>
                   <Input
                     id="propertyAddress"
                     value={formData.propertyAddress || ''}
@@ -969,7 +998,9 @@ export function CaseForm({ mode, caseId, initialData }: CaseFormProps) {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="propertyCity">Ciudad *</Label>
+                    <Label htmlFor="propertyCity" className={hasFieldError('propertyCity') ? 'text-destructive' : ''}>
+                      Ciudad *
+                    </Label>
                     <Input
                       id="propertyCity"
                       value={formData.propertyCity || ''}
@@ -979,7 +1010,9 @@ export function CaseForm({ mode, caseId, initialData }: CaseFormProps) {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="propertyProvince">Provincia *</Label>
+                    <Label htmlFor="propertyProvince" className={hasFieldError('propertyProvince') ? 'text-destructive' : ''}>
+                      Provincia *
+                    </Label>
                     <Input
                       id="propertyProvince"
                       value={formData.propertyProvince || ''}
@@ -1076,7 +1109,9 @@ export function CaseForm({ mode, caseId, initialData }: CaseFormProps) {
               <CardContent className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="ownerName">Nombre del Propietario *</Label>
+                    <Label htmlFor="ownerName" className={hasFieldError('ownerName') ? 'text-destructive' : ''}>
+                      Nombre del Propietario *
+                    </Label>
                     <Input
                       id="ownerName"
                       value={formData.ownerName || ''}
@@ -1381,7 +1416,9 @@ export function CaseForm({ mode, caseId, initialData }: CaseFormProps) {
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="space-y-2">
-                  <Label htmlFor="departmentId">Departamento *</Label>
+                  <Label htmlFor="departmentId" className={hasFieldError('departmentId') ? 'text-destructive' : ''}>
+                    Departamento *
+                  </Label>
                   <Select
                     value={formData.departmentId || ''}
                     onValueChange={(value) => handleInputChange('departmentId', value)}
