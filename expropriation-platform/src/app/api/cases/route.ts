@@ -4,7 +4,6 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { logActivity } from '@/lib/activity-logger'
 import { CreateCaseSchema, CaseSearchSchema } from '@/lib/validations/case'
-import { z } from 'zod'
 
 // GET /api/cases - List cases with filtering and pagination
 export async function GET(request: NextRequest) {
@@ -21,7 +20,7 @@ export async function GET(request: NextRequest) {
     const searchResult = CaseSearchSchema.safeParse(searchParamsObject)
     if (!searchResult.success) {
       return NextResponse.json(
-        { error: 'Invalid search parameters', details: searchResult.error.errors },
+        { error: 'Invalid search parameters', details: searchResult.error },
         { status: 400 }
       )
     }
@@ -365,40 +364,41 @@ export async function POST(request: NextRequest) {
         }
       }
     })
+    console.log(newCase);
 
     // Log case creation
     await logActivity({
       userId: user.id,
       action: 'CREATED',
       entityType: 'case',
-      entityId: requestBody.id,
-      description: `Created case ${requestBody.fileNumber}: ${requestBody.title}`,
+      entityId: newCase.id,
+      description: `Created case ${newCase.fileNumber}: ${newCase.title}`,
       metadata: {
-        caseId: requestBody.id,
-        fileNumber: requestBody.fileNumber,
-        title: requestBody.title,
-        departmentId: requestBody.departmentId
+        caseId: newCase.id,
+        fileNumber: newCase.fileNumber,
+        title: newCase.title,
+        departmentId: newCase.departmentId
       }
     })
 
     // Create case history entry
     await prisma.caseHistory.create({
       data: {
-        caseId: requestBody.id,
+        caseId: newCase.id,
         changedById: user.id,
         action: 'case_created',
         newValue: JSON.stringify({
-          fileNumber: requestBody.fileNumber,
-          title: requestBody.title,
-          status: requestBody.status,
-          stage: requestBody.currentStage,
-          department: requestBody.department.name
+          fileNumber: newCase.fileNumber,
+          title: newCase.title,
+          status: newCase.status,
+          stage: newCase.currentStage,
+          department: newCase.department.name
         }),
         notes: 'Caso creado inicialmente'
       }
     })
 
-    return NextResponse.json(requestBody, { status: 201 })
+    return NextResponse.json(newCase, { status: 201 })
   } catch (error) {
     console.error('Error creating case:', error)
     return NextResponse.json(

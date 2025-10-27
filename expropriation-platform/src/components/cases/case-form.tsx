@@ -108,6 +108,14 @@ const STEPS = [
   { id: 'assignment', title: 'Asignación', required: ['departmentId'] }
 ]
 
+/**
+ * Use YYYY-MM-DD format which is more reliable for URL params
+ * 
+ * @param date 
+ * @returns date in format YYYY-MM-DD
+ */
+const formatDate = (date: Date) => date.toISOString().split('T')[0]
+
 export function CaseForm({ mode, caseId, initialData }: CaseFormProps) {
   const { data: session, status } = useSession()
   const router = useRouter()
@@ -218,16 +226,28 @@ export function CaseForm({ mode, caseId, initialData }: CaseFormProps) {
 
   // Generate case number locally as fallback (create mode only)
   const generateCaseNumber = async () => {
-    const now = new Date()
-    const year = now.getFullYear()
-    const month = (now.getMonth() + 1).toString().padStart(2, '0')
-    const day = now.getDate().toString().padStart(2, '0')
+    const today = new Date()
+    const year = today.getFullYear()
+    const month = (today.getMonth() + 1).toString().padStart(2, '0')
+    const day = today.getDate().toString().padStart(2, '0')
+
     let index = 1
     try {
-      const response = await fetch('/api/cases')
+      today.setHours(0, 0, 0, 0)
+      const tomorrow = new Date(today)
+      tomorrow.setDate(tomorrow.getDate() + 1)
+
+      const params = new URLSearchParams({
+        createdAtFrom: formatDate(today),
+        createdAtTo: formatDate(tomorrow),
+      })
+
+      const response = await fetch(`/api/cases?${params}`)
       if (response.ok) {
         const data = await response.json()
-        index = (data.pagination.total || 0) + 1
+        console.log(data);
+        // Use the actual cases array length since we're filtering by date
+        index = (data.cases?.length || 0) + 1
       }
     } catch (error) {
       console.error('Couldn\'t get today\'s case count:', error)
@@ -466,6 +486,11 @@ export function CaseForm({ mode, caseId, initialData }: CaseFormProps) {
         // Convert placeholder values back to null for API
         assignedToId: formData.assignedToId === 'UNASSIGNED' ? null : formData.assignedToId,
         supervisedById: formData.supervisedById === 'UNASSIGNED' ? null : formData.supervisedById,
+        // Convert empty strings to null for validated optional fields
+        propertyCoordinates: formData.propertyCoordinates?.trim() || null,
+        ownerIdentification: formData.ownerIdentification?.trim() || null,
+        ownerContact: formData.ownerContact?.trim() || null,
+        ownerEmail: formData.ownerEmail?.trim() || null,
       }
 
       let response

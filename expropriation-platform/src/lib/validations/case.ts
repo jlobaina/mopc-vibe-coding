@@ -67,6 +67,8 @@ export const CaseSchema = z.object({
 
   propertyCoordinates: z.string()
     .regex(/^-?\d+\.?\d*,-?\d+\.?\d*$/, 'Las coordenadas deben estar en formato latitud,longitud')
+    .or(z.literal(''))
+    .nullable()
     .optional(),
 
   propertyArea: z.number()
@@ -86,14 +88,20 @@ export const CaseSchema = z.object({
   ownerIdentification: z.string()
     .min(3, 'La identificación del propietario debe tener al menos 3 caracteres')
     .max(50, 'La identificación no puede exceder 50 caracteres')
+    .or(z.literal(''))
+    .nullable()
     .optional(),
 
   ownerContact: z.string()
     .regex(/^[+]?[\d\s\-\(\)]+$/, 'El teléfono debe contener solo números y caracteres válidos')
+    .or(z.literal(''))
+    .nullable()
     .optional(),
 
   ownerEmail: z.string()
     .email('El email no es válido')
+    .or(z.literal(''))
+    .nullable()
     .optional(),
 
   ownerAddress: z.string()
@@ -146,8 +154,8 @@ export const CaseSchema = z.object({
   departmentId: z.string()
     .min(1, 'El departamento es requerido'),
 
-  assignedToId: z.string().optional(),
-  supervisedById: z.string().optional(),
+  assignedToId: z.string().nullable().optional(),
+  supervisedById: z.string().nullable().optional(),
 
   // Progress
   progressPercentage: z.number()
