@@ -108,6 +108,15 @@ const STEPS = [
   { id: 'assignment', title: 'Asignación', required: ['departmentId'] }
 ]
 
+// Edit mode steps with different tabs
+const EDIT_STEPS = [
+  { id: 'basic', title: 'Información Básica' },
+  { id: 'property', title: 'Propiedad' },
+  { id: 'owner', title: 'Propietario' },
+  { id: 'legal', title: 'Legal y Financiero' },
+  { id: 'assignment', title: 'Asignación' }
+]
+
 /**
  * Use YYYY-MM-DD format which is more reliable for URL params
  * 
@@ -122,7 +131,7 @@ export function CaseForm({ mode, caseId, initialData }: CaseFormProps) {
 
   const [loading, setLoading] = useState(false)
   const [savingDraft, setSavingDraft] = useState(false)
-  const [currentStep, setCurrentStep] = useState(mode === 'create' ? 0 : STEPS.length - 1) // Start at last step for edit mode
+  const [currentStep, setCurrentStep] = useState(mode === 'create' ? 0 : 0) // Start at 0 for both modes
   const [showValidationAlert, setShowValidationAlert] = useState(false)
   const [departments, setDepartments] = useState<Department[]>([])
   const [users, setUsers] = useState<User[]>([])
@@ -761,7 +770,18 @@ export function CaseForm({ mode, caseId, initialData }: CaseFormProps) {
       )}
 
       <form onSubmit={handleSubmit}>
-        <Tabs value={mode === 'create' ? STEPS[currentStep].id : 'basic'} className="space-y-6">
+        <Tabs
+          value={mode === 'create' ? STEPS[currentStep].id : EDIT_STEPS[currentStep].id}
+          className="space-y-6"
+          onValueChange={(value) => {
+            if (mode === 'edit') {
+              const stepIndex = EDIT_STEPS.findIndex(step => step.id === value)
+              if (stepIndex !== -1) {
+                setCurrentStep(stepIndex)
+              }
+            }
+          }}
+        >
           {mode === 'create' ? (
             <TabsList className="grid w-full grid-cols-5">
               {STEPS.map((step, index) => (
@@ -777,11 +797,15 @@ export function CaseForm({ mode, caseId, initialData }: CaseFormProps) {
             </TabsList>
           ) : (
             <TabsList className="grid w-full grid-cols-5">
-              <TabsTrigger value="basic">Información Básica</TabsTrigger>
-              <TabsTrigger value="property">Propiedad</TabsTrigger>
-              <TabsTrigger value="owner">Propietario</TabsTrigger>
-              <TabsTrigger value="legal">Legal y Financiero</TabsTrigger>
-              <TabsTrigger value="assignment">Asignación</TabsTrigger>
+              {EDIT_STEPS.map((step, index) => (
+                <TabsTrigger
+                  key={step.id}
+                  value={step.id}
+                  className={currentStep === index ? "text-primary" : "text-muted-foreground"}
+                >
+                  {step.title}
+                </TabsTrigger>
+              ))}
             </TabsList>
           )}
 
