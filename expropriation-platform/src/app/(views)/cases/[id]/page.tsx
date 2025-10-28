@@ -223,7 +223,7 @@ export default function CaseDetailPage() {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => router.back()}
+            onClick={() => router.push('/cases')}
           >
             <ArrowLeft className="h-4 w-4" />
           </Button>
