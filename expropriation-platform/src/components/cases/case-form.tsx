@@ -18,6 +18,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Progress } from '@/components/ui/progress'
 import { toast } from 'react-hot-toast'
 import { Badge } from '@/components/ui/badge'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 
 import { CreateCaseInput, UpdateCaseInput } from '@/lib/validations/case'
 import { User, Department, Document, Case } from '@/types/client'
@@ -140,6 +141,7 @@ export function CaseForm({ mode, caseId, initialData }: CaseFormProps) {
   const [documents, setDocuments] = useState<CaseCreationDocument[]>([])
   const [isDraft, setIsDraft] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<Set<string>>(new Set())
+  const [showCancelModal, setShowCancelModal] = useState(false)
 
   // Form data state - handles both create and edit modes
   const [formData, setFormData] = useState<CreateCaseInput | UpdateCaseInput>(() => {
@@ -449,6 +451,41 @@ export function CaseForm({ mode, caseId, initialData }: CaseFormProps) {
     setFieldErrors(new Set())
   }
 
+  // Cancel handlers (create mode only)
+  const handleCancelClick = () => {
+    if (mode === 'create') {
+      setShowCancelModal(true)
+    } else {
+      router.back()
+    }
+  }
+
+  const handleSaveDraftAndExit = async () => {
+    setShowCancelModal(false)
+    await saveDraft()
+    if (!isDraft) {
+      router.push('/cases')
+    }
+  }
+
+  const handleExitWithoutSaving = () => {
+    setShowCancelModal(false)
+    router.push('/cases')
+  }
+
+  const handleStayInForm = () => {
+    setShowCancelModal(false)
+  }
+
+  // Check if form has any data entered (for create mode)
+  const hasFormData = () => {
+    const requiredFields = ['fileNumber', 'title', 'propertyAddress', 'propertyCity', 'propertyProvince', 'ownerName']
+    return requiredFields.some(field => {
+      const value = formData[field as keyof CreateCaseInput]
+      return value && (typeof value === 'string' ? value.trim() !== '' : true)
+    }) || documents.length > 0 || selectedExistingDocuments.length > 0
+  }
+
   // Save draft functionality (create mode only)
   const saveDraft = async () => {
     if (mode !== 'create') return
@@ -703,7 +740,7 @@ export function CaseForm({ mode, caseId, initialData }: CaseFormProps) {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => router.back()}
+            onClick={handleCancelClick}
           >
             <ArrowLeft className="h-4 w-4" />
           </Button>
@@ -774,9 +811,13 @@ export function CaseForm({ mode, caseId, initialData }: CaseFormProps) {
           value={mode === 'create' ? STEPS[currentStep].id : EDIT_STEPS[currentStep].id}
           className="space-y-6"
           onValueChange={(value) => {
-            if (mode === 'edit') {
-              const stepIndex = EDIT_STEPS.findIndex(step => step.id === value)
-              if (stepIndex !== -1) {
+            const steps = mode === 'create' ? STEPS : EDIT_STEPS
+            const stepIndex = steps.findIndex(step => step.id === value)
+            if (stepIndex !== -1) {
+              // In create mode, only allow navigation to completed steps or current step
+              if (mode === 'create' && stepIndex <= currentStep) {
+                setCurrentStep(stepIndex)
+              } else if (mode === 'edit') {
                 setCurrentStep(stepIndex)
               }
             }
@@ -1518,7 +1559,7 @@ export function CaseForm({ mode, caseId, initialData }: CaseFormProps) {
             <Button
               type="button"
               variant="outline"
-              onClick={() => router.back()}
+              onClick={handleCancelClick}
               disabled={loading || savingDraft}
             >
               Cancelar
@@ -1568,6 +1609,90 @@ export function CaseForm({ mode, caseId, initialData }: CaseFormProps) {
           </div>
         </div>
       </form>
+
+      {/* Cancel Confirmation Modal (Create mode only) */}
+      {mode === 'create' && (
+        <Dialog open={showCancelModal} onOpenChange={setShowCancelModal}>
+          <DialogContent className="sm:max-w-[600px]">
+            <DialogHeader>
+              <DialogTitle>¿Está seguro que desea salir?</DialogTitle>
+              <DialogDescription className="text-left">
+                {hasFormData()
+                  ? "Tiene información no guardada en este formulario. ¿Qué desea hacer antes de salir?"
+                  : "¿Está seguro que desea cancelar la creación de este caso?"
+                }
+              </DialogDescription>
+            </DialogHeader>
+
+            {hasFormData() && (
+              <div className="py-4">
+                <div className="space-y-2 text-sm text-muted-foreground">
+                  <p>• Si guarda como borrador, podrá continuar más tarde</p>
+                  <p>• Si sale sin guardar, toda la información se perderá</p>
+                </div>
+              </div>
+            )}
+
+            <DialogFooter className="flex-col sm:flex-row gap-2 sm:gap-3">
+              {hasFormData() ? (
+                <>
+                  <Button
+                    variant="outline"
+                    onClick={handleSaveDraftAndExit}
+                    disabled={savingDraft}
+                    className="w-full sm:w-auto min-w-[160px]"
+                  >
+                    {savingDraft ? (
+                      <>
+                        <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                        Guardando...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="mr-2 h-4 w-4" />
+                        Guardar como borrador
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    onClick={handleExitWithoutSaving}
+                    disabled={savingDraft}
+                    className="w-full sm:w-auto min-w-[140px]"
+                  >
+                    Salir sin guardar
+                  </Button>
+                  <Button
+                    variant="default"
+                    onClick={handleStayInForm}
+                    disabled={savingDraft}
+                    className="w-full sm:w-auto min-w-[150px]"
+                  >
+                    Continuar editando
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button
+                    variant="outline"
+                    onClick={handleExitWithoutSaving}
+                    className="w-full sm:w-auto min-w-[100px]"
+                  >
+                    Sí, cancelar
+                  </Button>
+                  <Button
+                    variant="default"
+                    onClick={handleStayInForm}
+                    className="w-full sm:w-auto min-w-[80px]"
+                  >
+                    Continuar
+                  </Button>
+                </>
+              )}
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   )
 }
