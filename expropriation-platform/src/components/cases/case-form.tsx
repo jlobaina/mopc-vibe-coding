@@ -148,6 +148,7 @@ export function CaseForm({ mode, caseId, initialData }: CaseFormProps) {
   const [showCancelModal, setShowCancelModal] = useState(false)
   const [refreshDocuments, setRefreshDocuments] = useState(0)
   const [assignmentStepAttempted, setAssignmentStepAttempted] = useState(false)
+  const [explicitSubmitAttempt, setExplicitSubmitAttempt] = useState(false)
 
   // Form data state - handles both create and edit modes
   const [formData, setFormData] = useState<CreateCaseInput | UpdateCaseInput>(() => {
@@ -383,6 +384,10 @@ export function CaseForm({ mode, caseId, initialData }: CaseFormProps) {
     if ((field === 'assignedToId' || field === 'supervisedById') && value === 'UNASSIGNED') {
       value = undefined
     }
+
+    // Don't mark assignment step as attempted just for field interactions
+    // Only mark it when user actually tries to submit or navigate after filling fields
+
     setFormData(prev => ({ ...prev, [field]: value }))
 
     // Clear field error when user changes value
@@ -419,10 +424,18 @@ export function CaseForm({ mode, caseId, initialData }: CaseFormProps) {
   }
 
   // Validation function for current step (create mode only)
-  const validateCurrentStep = (showErrors = true) => {
+  const validateCurrentStep = (showErrors = true, context = 'navigation') => {
     if (mode === 'edit') return true // Skip step validation in edit mode
 
     const step = STEPS[currentStep]
+
+    // Skip validation for assignment step during navigation (only validate on explicit submission)
+    if (currentStep === 4 && context === 'navigation') {
+      setFieldErrors(new Set())
+      setShowValidationAlert(false)
+      return true
+    }
+
     const missingFields = step.required.filter(field => {
       const value = formData[field as keyof CreateCaseInput]
       return !value || (typeof value === 'string' && value.trim() === '')
@@ -431,7 +444,12 @@ export function CaseForm({ mode, caseId, initialData }: CaseFormProps) {
     if (missingFields.length > 0) {
       setFieldErrors(new Set(missingFields))
       // Only show validation alert if errors should be shown AND this is an attempted interaction
-      if (showErrors && (currentStep !== 4 || assignmentStepAttempted)) {
+      // For assignment step (index 4), ONLY show errors on explicit submission attempt
+      if (showErrors && currentStep !== 4) {
+        setShowValidationAlert(true)
+      }
+      // For assignment step, only show if user has explicitly attempted submission
+      if (showErrors && currentStep === 4 && explicitSubmitAttempt && missingFields.has('departmentId')) {
         setShowValidationAlert(true)
       }
       return false
@@ -444,10 +462,19 @@ export function CaseForm({ mode, caseId, initialData }: CaseFormProps) {
 
   // Navigation handlers (create mode only)
   const handleNext = () => {
-    if (validateCurrentStep()) {
+    if (validateCurrentStep(true, 'navigation')) {
       if (currentStep < STEPS.length - 1) {
-        setCurrentStep(currentStep + 1)
+        const nextStep = currentStep + 1
+        setCurrentStep(nextStep)
         setFieldErrors(new Set()) // Clear errors when moving to next step
+
+        // Reset assignment step attempted flag when entering assignment step fresh
+        // Also clear validation alert when entering assignment step
+        if (nextStep === 4) {
+          setAssignmentStepAttempted(false)
+          setExplicitSubmitAttempt(false)
+          setShowValidationAlert(false)
+        }
       }
     }
   }
@@ -458,6 +485,7 @@ export function CaseForm({ mode, caseId, initialData }: CaseFormProps) {
       // Reset assignment step attempted flag if leaving the assignment step
       if (currentStep === 4) {
         setAssignmentStepAttempted(false)
+        setExplicitSubmitAttempt(false)
       }
     }
     setShowValidationAlert(false)
@@ -546,9 +574,23 @@ export function CaseForm({ mode, caseId, initialData }: CaseFormProps) {
     }
   }
 
+  const handleExplicitSubmit = async () => {
+    setExplicitSubmitAttempt(true)
+    await performSubmit()
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
+    // Only allow form submission if user explicitly clicked submit
+    if (!explicitSubmitAttempt) {
+      return
+    }
+
+    await performSubmit()
+  }
+
+  const performSubmit = async () => {
     // Mark assignment step as attempted since we're submitting
     setAssignmentStepAttempted(true)
 
@@ -644,6 +686,7 @@ export function CaseForm({ mode, caseId, initialData }: CaseFormProps) {
       showError(error instanceof Error ? error.message : 'Error al guardar el caso')
     } finally {
       setLoading(false)
+      setExplicitSubmitAttempt(false) // Reset the flag after submission
     }
   }
 
@@ -833,7 +876,7 @@ export function CaseForm({ mode, caseId, initialData }: CaseFormProps) {
       )}
 
       {/* Validation Alert (create mode only) */}
-      {mode === 'create' && showValidationAlert && (
+      {mode === 'create' && showValidationAlert && currentStep !== 4 && (
         <Alert className="mb-6 border-orange-200 bg-orange-50">
           <AlertTriangle className="h-4 w-4 text-orange-600" />
           <AlertTitle className="text-orange-800">Campos requeridos faltantes</AlertTitle>
@@ -859,6 +902,7 @@ export function CaseForm({ mode, caseId, initialData }: CaseFormProps) {
                 // Reset assignment step attempted flag if leaving the assignment step
                 if (currentStep === 4 && stepIndex !== 4) {
                   setAssignmentStepAttempted(false)
+                  setExplicitSubmitAttempt(false)
                 }
               } else if (mode === 'edit') {
                 setCurrentStep(stepIndex)
@@ -1665,7 +1709,8 @@ export function CaseForm({ mode, caseId, initialData }: CaseFormProps) {
               </Button>
             ) : (
               <Button
-                type="submit"
+                type="button"
+                onClick={handleExplicitSubmit}
                 disabled={loading || savingDraft}
               >
                 <Save className="mr-2 h-4 w-4" />
