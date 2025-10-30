@@ -43,7 +43,7 @@ interface CaseFormProps {
   initialData?: Case
 }
 
-export function CaseForm({ mode, caseId, initialData }: CaseFormProps) {
+export function CaseFormRefactored({ mode, caseId, initialData }: CaseFormProps) {
   const router = useRouter()
   const { success, error: showError } = useEnhancedToast()
 
@@ -359,7 +359,7 @@ export function CaseForm({ mode, caseId, initialData }: CaseFormProps) {
         <div className="mb-8">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-medium">Paso {currentStep + 1} de {steps.length}</span>
-            <span className="text-sm text-muted-foreground">{steps[currentStep]?.title}</span>
+            <span className="text-sm text-muted-foreground">{steps[currentStep].title}</span>
           </div>
           <Progress value={((currentStep + 1) / steps.length) * 100} className="w-full" />
         </div>
@@ -378,7 +378,7 @@ export function CaseForm({ mode, caseId, initialData }: CaseFormProps) {
 
       <form onSubmit={handleSubmit}>
         <Tabs
-          value={steps[currentStep]?.id}
+          value={steps[currentStep].id}
           className="space-y-6"
           onValueChange={handleTabChange}
         >
