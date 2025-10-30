@@ -27,7 +27,7 @@ export const validateCurrentStep = (
   }
 
   // Check required fields for current step
-  step.required.forEach(field => {
+  step?.required.forEach(field => {
     const value = formData[field as keyof CreateCaseInput]
     if (!value || (typeof value === 'string' && value.trim() === '')) {
       errors.push({

@@ -160,7 +160,9 @@ export function CaseForm({ mode, caseId, initialData }: CaseFormProps) {
 
   // Save draft functionality (create mode only)
   const saveDraft = async () => {
-    if (mode !== 'create') return
+    if (mode !== 'create') {
+      return
+    }
 
     setSavingDraft(true)
     try {

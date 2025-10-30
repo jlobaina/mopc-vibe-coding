@@ -139,7 +139,9 @@ export function useCaseForm(mode: 'create' | 'edit', caseId?: string, initialDat
 
   // API calls
   const fetchCase = async () => {
-    if (!caseId) return
+    if (!caseId) {
+      return
+    }
 
     try {
       const response = await fetch(`/api/cases/${caseId}`)

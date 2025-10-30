@@ -30,7 +30,9 @@ export function useCaseFormNavigation(
   }
 
   const validateStep = (context: 'navigation' | 'submission' = 'navigation') => {
-    if (mode === 'edit') return true
+    if (mode === 'edit') {
+      return true
+    }
 
     const validation = validateCurrentStep(formData, navigationState.currentStep, context)
 
