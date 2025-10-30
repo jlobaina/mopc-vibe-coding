@@ -13,8 +13,8 @@ const createCaseDocumentSchema = z.object({
     'APPRAISAL', 'CONTRACT', 'CORRESPONDENCE', 'FINANCIAL', 'TECHNICAL', 'OTHER'
   ]),
   category: z.enum([
-    'ADMINISTRATIVE', 'LEGAL', 'TECHNICAL', 'FINANCIAL', 'CORRESPONDENCE',
-    'EVIDENCE', 'REPORT', 'PLAN', 'PERMIT', 'OTHER'
+    'LEGAL', 'TECHNICAL', 'FINANCIAL', 'ADMINISTRATIVE', 'COMMUNICATION',
+    'PHOTOGRAPHIC', 'MULTIMEDIA', 'TEMPLATE', 'REFERENCE', 'CORRESPONDENCE'
   ]),
   securityLevel: z.enum(['PUBLIC', 'INTERNAL', 'CONFIDENTIAL', 'RESTRICTED']).default('INTERNAL'),
   tags: z.string().optional(),
@@ -250,7 +250,7 @@ export async function POST(
     // Create activity log
     await prisma.activity.create({
       data: {
-        action: 'DOCUMENT_UPLOADED',
+        action: 'UPLOADED',
         entityType: 'document',
         entityId: document.id,
         description: `Document uploaded to case: ${document.title}`,

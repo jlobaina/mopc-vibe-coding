@@ -17,9 +17,6 @@ import {
   Music,
   Archive,
   Eye,
-  Download,
-  Trash2,
-  Plus
 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -30,7 +27,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { Document, DocumentFormData } from '@/types/client'
@@ -70,16 +67,16 @@ const DOCUMENT_TYPES = [
 ]
 
 const CATEGORIES = [
-  { value: 'ADMINISTRATIVE', label: 'Administrativo' },
   { value: 'LEGAL', label: 'Legal' },
   { value: 'TECHNICAL', label: 'Técnico' },
   { value: 'FINANCIAL', label: 'Financiero' },
+  { value: 'ADMINISTRATIVE', label: 'Administrativo' },
+  { value: 'COMMUNICATION', label: 'Comunicación' },
+  { value: 'PHOTOGRAPHIC', label: 'Fotográfico' },
+  { value: 'MULTIMEDIA', label: 'Multimedia' },
+  { value: 'TEMPLATE', label: 'Plantilla' },
+  { value: 'REFERENCE', label: 'Referencia' },
   { value: 'CORRESPONDENCE', label: 'Correspondencia' },
-  { value: 'EVIDENCE', label: 'Evidencia' },
-  { value: 'REPORT', label: 'Reporte' },
-  { value: 'PLAN', label: 'Plan' },
-  { value: 'PERMIT', label: 'Permiso' },
-  { value: 'OTHER', label: 'Otro' },
 ]
 
 const SECURITY_LEVELS = [
@@ -104,7 +101,7 @@ export function DocumentUpload({
     title: '',
     description: '',
     documentType: 'OTHER',
-    category: 'OTHER',
+    category: 'ADMINISTRATIVE',
     securityLevel: 'INTERNAL',
     tags: '',
   })
@@ -252,7 +249,7 @@ export function DocumentUpload({
       title: '',
       description: '',
       documentType: 'OTHER',
-      category: 'OTHER',
+      category: 'ADMINISTRATIVE',
       securityLevel: 'INTERNAL',
       tags: '',
     })
