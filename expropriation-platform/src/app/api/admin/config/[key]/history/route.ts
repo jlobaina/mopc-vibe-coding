@@ -8,6 +8,7 @@ export async function GET(
 ) {
   try {
     const session = await auth()
+    const key = (await params).key
 
     // Only allow super admins to access configuration history
     if (!session?.user || session.user.role !== 'super_admin') {
@@ -24,7 +25,7 @@ export async function GET(
     // Find the configuration first
     const config = await prisma.systemConfiguration.findFirst({
       where: {
-        key: (await params).key
+        key
       }
     })
 

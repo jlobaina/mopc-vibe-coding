@@ -12,7 +12,7 @@ export default function EditCasePage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const params = useParams()
-  const caseId = params.id as string
+  const caseId = String(params?.id)
 
   const [initialLoading, setInitialLoading] = useState(true)
   const [caseData, setCaseData] = useState<Case | null>(null)

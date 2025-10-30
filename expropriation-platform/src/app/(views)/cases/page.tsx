@@ -65,12 +65,28 @@ export default function CasesPage() {
   const fetchCases = async () => {
     try {
       setLoading(true)
-      const params = new URLSearchParams({
+
+      // Build URL parameters, filtering out undefined values and converting Dates to strings
+      const paramsObj = {
         ...searchParams,
         query: debouncedQuery,
         page: searchParams.page.toString(),
         limit: searchParams.limit.toString()
+      }
+
+      // Filter out undefined values and convert Date objects to ISO strings
+      const cleanedParams: Record<string, string> = {}
+      Object.entries(paramsObj).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          if (value instanceof Date) {
+            cleanedParams[key] = value.toISOString()
+          } else {
+            cleanedParams[key] = String(value)
+          }
+        }
       })
+
+      const params = new URLSearchParams(cleanedParams)
 
       const response = await fetch(`/api/cases?${params}`)
       if (!response.ok) {
@@ -123,8 +139,8 @@ export default function CasesPage() {
   }
 
   // Format date
-  const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString('es-DO', {
+  const formatDate = (date: Date) => {
+    return date.toLocaleDateString('es-DO', {
       year: 'numeric',
       month: 'short',
       day: 'numeric'
@@ -330,7 +346,7 @@ export default function CasesPage() {
                         {case_.assignedTo ? (
                           <div>
                             <div className="text-sm">
-                              {case_.assignedTo.firstName} {case_.assignedTo.lastName}
+                              {case_.assignedTo.name}
                             </div>
                           </div>
                         ) : (
