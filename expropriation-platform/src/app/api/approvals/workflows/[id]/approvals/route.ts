@@ -135,18 +135,29 @@ export async function POST(
       (new Date().getTime() - new Date(workflow.createdAt).getTime()) / (1000 * 60 * 60)
     );
 
+    const updateData: any = {
+      decision: validatedData.decision,
+      reviewedAt: new Date(),
+      responseTime,
+      ipAddress: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || '',
+      userAgent: request.headers.get('user-agent') || '',
+    };
+
+    if (validatedData.comments !== undefined) {
+      updateData.comments = validatedData.comments;
+    }
+
+    if (validatedData.conditions !== undefined) {
+      updateData.conditions = validatedData.conditions;
+    }
+
+    if (validatedData.delegationTo !== undefined) {
+      updateData.delegationTo = validatedData.delegationTo;
+    }
+
     approval = await prisma.approval.update({
       where: { id: approval.id },
-      data: {
-        decision: validatedData.decision,
-        comments: validatedData.comments,
-        conditions: validatedData.conditions,
-        delegationTo: validatedData.delegationTo,
-        reviewedAt: new Date(),
-        responseTime,
-        ipAddress: request.ip || request.headers.get('x-forwarded-for') || '',
-        userAgent: request.headers.get('user-agent') || '',
-      },
+      data: updateData,
       include: {
         user: {
           select: {
@@ -168,7 +179,7 @@ export async function POST(
     const rejectedCount = allApprovals.filter(a => a.decision === ApprovalStatus.REJECTED).length;
     const totalApprovals = allApprovals.length;
 
-    let workflowStatus = workflow.status;
+    let workflowStatus: ApprovalStatus = workflow.status;
     let completedAt = null;
     let completedBy = null;
 
@@ -223,7 +234,7 @@ export async function POST(
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Validation failed', details: error.errors },
+        { error: 'Validation failed', details: error.issues },
         { status: 400 }
       );
     }
