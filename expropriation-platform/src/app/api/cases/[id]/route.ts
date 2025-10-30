@@ -68,6 +68,9 @@ export async function GET(
           }
         },
         documents: {
+          where: {
+            status: { not: 'ARCHIVED' } // Exclude archived documents
+          },
           include: {
             uploadedBy: {
               select: {
@@ -121,7 +124,11 @@ export async function GET(
         },
         _count: {
           select: {
-            documents: true,
+            documents: {
+              where: {
+                status: { not: 'ARCHIVED' } // Exclude archived documents from count
+              }
+            },
             histories: true,
             activities: true,
             caseMeetings: true

@@ -79,7 +79,10 @@ export async function GET(
     const sortOrder = searchParams.get('sortOrder') || 'desc';
 
     // Build where clause
-    const where: any = { caseId };
+    const where: any = {
+      caseId,
+      status: { not: 'ARCHIVED' } // Exclude archived (soft deleted) documents
+    };
 
     if (search) {
       where.OR = [
@@ -147,10 +150,13 @@ export async function GET(
       updatedAt: doc.updatedAt.toISOString(),
     }));
 
-    // Get document statistics for the case
+    // Get document statistics for the case (excluding archived documents)
     const stats = await prisma.document.groupBy({
       by: ['documentType', 'category', 'status'],
-      where: { caseId },
+      where: {
+        caseId,
+        status: { not: 'ARCHIVED' } // Exclude archived documents from stats
+      },
       _count: true,
     });
 
