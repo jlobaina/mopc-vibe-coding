@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { CaseStats } from '@/components/cases/case-stats'
 import { formatDate } from '@/lib/format'
+import { getUserInitials, getUserName } from '@/lib/user-utils'
 import { Case } from '@/types/client'
 
 interface OverviewTabProps {
@@ -58,12 +59,12 @@ export function OverviewTab({ caseData }: OverviewTabProps) {
                   <div className="flex items-center gap-2">
                     <Avatar className="h-6 w-6">
                       <AvatarFallback>
-                        {caseData.assignedTo.firstName[0]}{caseData.assignedTo.lastName[0]}
+                        {getUserInitials(caseData.assignedTo)}
                       </AvatarFallback>
                     </Avatar>
                     <div className="text-sm">
                       <div className="font-medium">
-                        {caseData.assignedTo.firstName} {caseData.assignedTo.lastName}
+                        {getUserName(caseData.assignedTo)}
                       </div>
                       <div className="text-muted-foreground">Asignado</div>
                     </div>
@@ -73,12 +74,12 @@ export function OverviewTab({ caseData }: OverviewTabProps) {
                   <div className="flex items-center gap-2">
                     <Avatar className="h-6 w-6">
                       <AvatarFallback>
-                        {caseData.supervisedBy.firstName[0]}{caseData.supervisedBy.lastName[0]}
+                        {getUserInitials(caseData.supervisedBy)}
                       </AvatarFallback>
                     </Avatar>
                     <div className="text-sm">
                       <div className="font-medium">
-                        {caseData.supervisedBy.firstName} {caseData.supervisedBy.lastName}
+                        {getUserName(caseData.supervisedBy)}
                       </div>
                       <div className="text-muted-foreground">Supervisor</div>
                     </div>

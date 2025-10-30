@@ -90,6 +90,7 @@ export interface Case {
     name: string;
     email: string;
   };
+  activities?: Activity[];
   _count?: {
     documents: number;
     histories: number;
@@ -247,6 +248,13 @@ export interface Activity {
   entityId: string;
   userId: string;
   createdAt: Date;
+  user?: {
+    id: string;
+    firstName?: string;
+    lastName?: string;
+    name: string;
+    email: string;
+  };
 }
 
 // Client-safe extended types

@@ -3,6 +3,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { formatDate } from '@/lib/format'
+import { getUserInitials, getUserName } from '@/lib/user-utils'
 import { Case } from '@/types/client'
 
 interface ActivityTabProps {
@@ -10,6 +11,7 @@ interface ActivityTabProps {
 }
 
 export function ActivityTab({ caseData }: ActivityTabProps) {
+
   return (
     <Card>
       <CardHeader>
@@ -25,13 +27,13 @@ export function ActivityTab({ caseData }: ActivityTabProps) {
               <div key={activity.id} className="flex items-start gap-3 p-3 rounded-lg border">
                 <Avatar className="h-8 w-8">
                   <AvatarFallback>
-                    {activity.user?.firstName[0]}{activity.user?.lastName[0]}
+                    {getUserInitials(activity.user)}
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
                     <span className="font-medium text-sm">
-                      {activity.user?.firstName} {activity.user?.lastName}
+                      {getUserName(activity.user)}
                     </span>
                     <span className="text-xs text-muted-foreground">
                       {formatDate(activity.createdAt)}
