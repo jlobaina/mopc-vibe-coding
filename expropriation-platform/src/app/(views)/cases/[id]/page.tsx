@@ -39,9 +39,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { toast } from 'react-hot-toast'
 
 import { Case, Document } from '@/types/client'
-import { DocumentUpload } from '@/components/cases/document-upload'
 import { DocumentList } from '@/components/cases/document-list'
-import { DocumentTemplates } from '@/components/cases/document-templates'
 
 const CASE_STATUSES = {
   'PENDIENTE': { label: 'Pendiente', icon: Clock, color: 'bg-yellow-100 text-yellow-800' },
@@ -632,30 +630,11 @@ export default function CaseDetailPage() {
 
         {/* Documents Tab */}
         <TabsContent value="documents">
-          <div className="space-y-6">
-            {/* Document Upload Section */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <DocumentUpload
-                caseId={case_.id}
-                currentStage={case_.currentStage}
-                onUploadComplete={handleDocumentUploadComplete}
-              />
-
-              <DocumentTemplates
-                caseId={case_.id}
-                onDocumentCreated={handleDocumentUploadComplete}
-              />
-            </div>
-
-            <Separator />
-
-            {/* Document List */}
-            <DocumentList
-              caseId={case_.id}
-              onDocumentSelect={handleDocumentSelect}
-              refreshTrigger={refreshTrigger}
-            />
-          </div>
+          <DocumentList
+            caseId={case_.id}
+            onDocumentSelect={handleDocumentSelect}
+            refreshTrigger={refreshTrigger}
+          />
         </TabsContent>
 
         {/* Activity Tab */}

@@ -23,6 +23,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { CreateCaseInput, UpdateCaseInput } from '@/lib/validations/case'
 import { User, Department, Document, Case } from '@/types/client'
 import { CaseCreationDocuments } from '@/components/cases/case-creation-documents'
+import { DocumentUpload } from '@/components/cases/document-upload'
+import { DocumentList } from '@/components/cases/document-list'
 
 // Updated enums to match database schema
 const CASE_STAGES = [
@@ -115,6 +117,7 @@ const EDIT_STEPS = [
   { id: 'property', title: 'Propiedad' },
   { id: 'owner', title: 'Propietario' },
   { id: 'legal', title: 'Legal y Financiero' },
+  { id: 'documents', title: 'Documentos' },
   { id: 'assignment', title: 'Asignación' }
 ]
 
@@ -142,6 +145,7 @@ export function CaseForm({ mode, caseId, initialData }: CaseFormProps) {
   const [isDraft, setIsDraft] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<Set<string>>(new Set())
   const [showCancelModal, setShowCancelModal] = useState(false)
+  const [refreshDocuments, setRefreshDocuments] = useState(0)
 
   // Form data state - handles both create and edit modes
   const [formData, setFormData] = useState<CreateCaseInput | UpdateCaseInput>(() => {
@@ -475,6 +479,18 @@ export function CaseForm({ mode, caseId, initialData }: CaseFormProps) {
 
   const handleStayInForm = () => {
     setShowCancelModal(false)
+  }
+
+  // Handle document upload completion (edit mode)
+  const handleDocumentUploadComplete = () => {
+    setRefreshDocuments(prev => prev + 1)
+    toast.success('Documento subido exitosamente')
+  }
+
+  // Handle document selection
+  const handleDocumentSelect = (document: Document) => {
+    // Could open a detail modal or navigate to document details
+    console.log('Selected document:', document)
   }
 
   // Check if form has any data entered (for create mode)
@@ -837,7 +853,7 @@ export function CaseForm({ mode, caseId, initialData }: CaseFormProps) {
               ))}
             </TabsList>
           ) : (
-            <TabsList className="grid w-full grid-cols-5">
+            <TabsList className="grid w-full grid-cols-6">
               {EDIT_STEPS.map((step, index) => (
                 <TabsTrigger
                   key={step.id}
@@ -1467,6 +1483,29 @@ export function CaseForm({ mode, caseId, initialData }: CaseFormProps) {
                   </div>
                 </CardContent>
               </Card>
+            </TabsContent>
+          )}
+
+          {/* Documents Tab - Edit mode only */}
+          {mode === 'edit' && (
+            <TabsContent value="documents">
+              <div className="space-y-6">
+                {/* Document Upload Section */}
+                <DocumentUpload
+                  caseId={caseId!}
+                  currentStage={formData.currentStage || 'RECEPCION_SOLICITUD'}
+                  onUploadComplete={handleDocumentUploadComplete}
+                />
+
+                <Separator />
+
+                {/* Document List */}
+                <DocumentList
+                  caseId={caseId!}
+                  onDocumentSelect={handleDocumentSelect}
+                  refreshTrigger={refreshDocuments}
+                />
+              </div>
             </TabsContent>
           )}
 
