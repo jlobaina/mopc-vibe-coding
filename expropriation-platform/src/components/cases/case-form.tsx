@@ -16,7 +16,7 @@ import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Progress } from '@/components/ui/progress'
-import { toast } from 'react-hot-toast'
+import { useEnhancedToast } from '@/components/notifications/enhanced-toast-provider'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 
@@ -132,6 +132,7 @@ const formatDate = (date: Date) => date.toISOString().split('T')[0]
 export function CaseForm({ mode, caseId, initialData }: CaseFormProps) {
   const { data: session, status } = useSession()
   const router = useRouter()
+  const { success, error: showError } = useEnhancedToast()
 
   const [loading, setLoading] = useState(false)
   const [savingDraft, setSavingDraft] = useState(false)
@@ -146,6 +147,7 @@ export function CaseForm({ mode, caseId, initialData }: CaseFormProps) {
   const [fieldErrors, setFieldErrors] = useState<Set<string>>(new Set())
   const [showCancelModal, setShowCancelModal] = useState(false)
   const [refreshDocuments, setRefreshDocuments] = useState(0)
+  const [assignmentStepAttempted, setAssignmentStepAttempted] = useState(false)
 
   // Form data state - handles both create and edit modes
   const [formData, setFormData] = useState<CreateCaseInput | UpdateCaseInput>(() => {
@@ -279,7 +281,7 @@ export function CaseForm({ mode, caseId, initialData }: CaseFormProps) {
       const response = await fetch(`/api/cases/${caseId}`)
       if (!response.ok) {
         if (response.status === 404) {
-          toast.error('Caso no encontrado')
+          showError('Caso no encontrado')
           router.push('/cases')
           return
         }
@@ -327,7 +329,7 @@ export function CaseForm({ mode, caseId, initialData }: CaseFormProps) {
       })
     } catch (error) {
       console.error('Error fetching case:', error)
-      toast.error('Error al cargar los detalles del caso')
+      showError('Error al cargar los detalles del caso')
       router.push('/cases')
     }
   }
@@ -352,7 +354,7 @@ export function CaseForm({ mode, caseId, initialData }: CaseFormProps) {
       setDepartments(Array.isArray(data) ? data : (data.departments || []))
     } catch (error) {
       console.error('Error fetching departments:', error)
-      toast.error('Error al cargar los departamentos')
+      showError('Error al cargar los departamentos')
     }
   }
 
@@ -372,7 +374,7 @@ export function CaseForm({ mode, caseId, initialData }: CaseFormProps) {
       }
     } catch (error) {
       console.error('Error fetching users:', error)
-      toast.error('Error al cargar los usuarios del departamento')
+      showError('Error al cargar los usuarios del departamento')
     }
   }
 
@@ -417,7 +419,7 @@ export function CaseForm({ mode, caseId, initialData }: CaseFormProps) {
   }
 
   // Validation function for current step (create mode only)
-  const validateCurrentStep = () => {
+  const validateCurrentStep = (showErrors = true) => {
     if (mode === 'edit') return true // Skip step validation in edit mode
 
     const step = STEPS[currentStep]
@@ -428,7 +430,10 @@ export function CaseForm({ mode, caseId, initialData }: CaseFormProps) {
 
     if (missingFields.length > 0) {
       setFieldErrors(new Set(missingFields))
-      setShowValidationAlert(true)
+      // Only show validation alert if errors should be shown AND this is an attempted interaction
+      if (showErrors && (currentStep !== 4 || assignmentStepAttempted)) {
+        setShowValidationAlert(true)
+      }
       return false
     }
 
@@ -450,6 +455,10 @@ export function CaseForm({ mode, caseId, initialData }: CaseFormProps) {
   const handlePrevious = () => {
     if (currentStep > 0) {
       setCurrentStep(currentStep - 1)
+      // Reset assignment step attempted flag if leaving the assignment step
+      if (currentStep === 4) {
+        setAssignmentStepAttempted(false)
+      }
     }
     setShowValidationAlert(false)
     setFieldErrors(new Set())
@@ -484,7 +493,7 @@ export function CaseForm({ mode, caseId, initialData }: CaseFormProps) {
   // Handle document upload completion (edit mode)
   const handleDocumentUploadComplete = () => {
     setRefreshDocuments(prev => prev + 1)
-    toast.success('Documento subido exitosamente')
+    success('Documento subido exitosamente')
   }
 
   // Handle document selection
@@ -527,11 +536,11 @@ export function CaseForm({ mode, caseId, initialData }: CaseFormProps) {
 
       const newDraft = await response.json()
       setIsDraft(true)
-      toast.success('Borrador guardado exitosamente')
+      success('Borrador guardado exitosamente')
       router.push(`/cases/${newDraft.id}`)
     } catch (error) {
       console.error('Error saving draft:', error)
-      toast.error(error instanceof Error ? error.message : 'Error al guardar el borrador')
+      showError(error instanceof Error ? error.message : 'Error al guardar el borrador')
     } finally {
       setSavingDraft(false)
     }
@@ -539,6 +548,9 @@ export function CaseForm({ mode, caseId, initialData }: CaseFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    // Mark assignment step as attempted since we're submitting
+    setAssignmentStepAttempted(true)
 
     // Validation
     const requiredFields = ['fileNumber', 'title', 'propertyAddress', 'propertyCity', 'propertyProvince', 'ownerName', 'departmentId']
@@ -559,7 +571,7 @@ export function CaseForm({ mode, caseId, initialData }: CaseFormProps) {
         }
         setShowValidationAlert(true)
       }
-      toast.error('Por favor complete todos los campos requeridos')
+      showError('Por favor complete todos los campos requeridos')
       return
     }
 
@@ -605,7 +617,6 @@ export function CaseForm({ mode, caseId, initialData }: CaseFormProps) {
       }
 
       const savedCase = await response.json()
-      toast.success(mode === 'create' ? 'Caso creado exitosamente' : 'Caso actualizado exitosamente')
 
       // Link existing documents (create mode only)
       if (mode === 'create' && selectedExistingDocuments.length > 0) {
@@ -617,10 +628,20 @@ export function CaseForm({ mode, caseId, initialData }: CaseFormProps) {
         await uploadDocuments(savedCase.id)
       }
 
-      router.push(`/cases/${savedCase.id}`)
+      // Show success toast with case details
+      success(
+        mode === 'create'
+          ? `Caso ${savedCase.fileNumber} creado exitosamente`
+          : `Caso ${savedCase.fileNumber} actualizado exitosamente`
+      )
+
+      // Small delay before redirect to let user see the toast
+      setTimeout(() => {
+        router.push(`/cases/${savedCase.id}`)
+      }, 500)
     } catch (error) {
       console.error('Error saving case:', error)
-      toast.error(error instanceof Error ? error.message : 'Error al guardar el caso')
+      showError(error instanceof Error ? error.message : 'Error al guardar el caso')
     } finally {
       setLoading(false)
     }
@@ -639,10 +660,10 @@ export function CaseForm({ mode, caseId, initialData }: CaseFormProps) {
       )
 
       await Promise.all(linkPromises)
-      toast.success(`${selectedExistingDocuments.length} documento(s) existente(s) vinculado(s)`)
+      success(`${selectedExistingDocuments.length} documento(s) existente(s) vinculado(s)`)
     } catch (error) {
       console.error('Error linking existing documents:', error)
-      toast.error('Error al vincular documentos existentes')
+      showError('Error al vincular documentos existentes')
     }
   }
 
@@ -713,16 +734,16 @@ export function CaseForm({ mode, caseId, initialData }: CaseFormProps) {
           } : d
         ))
 
-        toast.error(`Error al subir ${doc.title}`)
+        showError(`Error al subir ${doc.title}`)
         throw error
       }
     })
 
     try {
       await Promise.all(uploadPromises)
-      toast.success(`${documents.length} documento(s) subido(s) exitosamente`)
+      success(`${documents.length} documento(s) subido(s) exitosamente`)
     } catch (error) {
-      toast.error('Algunos documentos no pudieron ser subidos')
+      showError('Algunos documentos no pudieron ser subidos')
     }
   }
 
@@ -833,6 +854,12 @@ export function CaseForm({ mode, caseId, initialData }: CaseFormProps) {
               // In create mode, only allow navigation to completed steps or current step
               if (mode === 'create' && stepIndex <= currentStep) {
                 setCurrentStep(stepIndex)
+                // Clear validation errors when navigating back to previous steps
+                setShowValidationAlert(false)
+                // Reset assignment step attempted flag if leaving the assignment step
+                if (currentStep === 4 && stepIndex !== 4) {
+                  setAssignmentStepAttempted(false)
+                }
               } else if (mode === 'edit') {
                 setCurrentStep(stepIndex)
               }
