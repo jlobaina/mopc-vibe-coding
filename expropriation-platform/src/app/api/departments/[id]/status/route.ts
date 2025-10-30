@@ -16,7 +16,7 @@ const statusChangeSchema = z.object({
 // PATCH /api/departments/[id]/status - Update department status
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -38,7 +38,7 @@ export async function PATCH(
 
     // Check if department exists
     const department = await prisma.department.findUnique({
-      where: { id: params.id },
+      where: { id: (await params).id },
       include: {
         _count: {
           select: {
@@ -115,7 +115,7 @@ export async function PATCH(
 
     // Update department status
     const updatedDepartment = await prisma.department.update({
-      where: { id: params.id },
+      where: { id: (await params).id },
       data: updateData,
       include: {
         parent: {
@@ -139,7 +139,7 @@ export async function PATCH(
       userId: session.user.id,
       action: 'UPDATED',
       entityType: 'department',
-      entityId: params.id,
+      entityId: (await params).id,
       description: `Estado del departamento actualizado: ${department.name}`,
       metadata: {
         departmentName: department.name,
@@ -162,7 +162,7 @@ export async function PATCH(
     if (validatedData.isSuspended === true) {
       await prisma.user.updateMany({
         where: {
-          departmentId: params.id,
+          departmentId: (await params).id,
           isActive: true,
           isSuspended: false,
         },
@@ -177,7 +177,7 @@ export async function PATCH(
       // Log suspension for affected users
       const affectedUsers = await prisma.user.findMany({
         where: {
-          departmentId: params.id,
+          departmentId: (await params).id,
           isActive: true,
         },
         select: { id: true, firstName: true, lastName: true },
@@ -205,7 +205,7 @@ export async function PATCH(
     if (validatedData.isSuspended === false && department.isSuspended === true) {
       await prisma.user.updateMany({
         where: {
-          departmentId: params.id,
+          departmentId: (await params).id,
           isSuspended: true,
           suspensionReason: {
             contains: 'Suspensión automática por suspensión del departamento',
@@ -253,7 +253,7 @@ export async function PATCH(
 // GET /api/departments/[id]/status - Get department status history
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -267,7 +267,7 @@ export async function GET(
 
     // Check if department exists
     const department = await prisma.department.findUnique({
-      where: { id: params.id },
+      where: { id: (await params).id },
       select: { id: true, name: true, code: true, isActive: true, isSuspended: true },
     });
 
@@ -282,7 +282,7 @@ export async function GET(
     const total = await prisma.activity.count({
       where: {
         entityType: 'department',
-        entityId: params.id,
+        entityId: (await params).id,
         action: 'UPDATED',
       },
     });
@@ -290,7 +290,7 @@ export async function GET(
     const activities = await prisma.activity.findMany({
       where: {
         entityType: 'department',
-        entityId: params.id,
+        entityId: (await params).id,
         action: 'UPDATED',
       },
       include: {

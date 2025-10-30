@@ -41,6 +41,7 @@ export interface Case {
   startDate: Date;
   expectedEndDate?: Date;
   actualEndDate?: Date;
+  isDraft?: boolean;
   propertyAddress: string;
   propertyCity: string;
   propertyProvince: string;
@@ -89,6 +90,7 @@ export interface Case {
     name: string;
     email: string;
   };
+  activities?: Activity[];
   _count?: {
     documents: number;
     histories: number;
@@ -246,6 +248,13 @@ export interface Activity {
   entityId: string;
   userId: string;
   createdAt: Date;
+  user?: {
+    id: string;
+    firstName?: string;
+    lastName?: string;
+    name: string;
+    email: string;
+  };
 }
 
 // Client-safe extended types

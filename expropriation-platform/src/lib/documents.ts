@@ -429,7 +429,7 @@ async function hasDepartmentAccess(userId: string, departmentId: string): Promis
     select: {
       departmentId: true,
       role: {
-        select: { permissions: true }
+        select: { name: true }
       }
     },
   });
@@ -437,9 +437,8 @@ async function hasDepartmentAccess(userId: string, departmentId: string): Promis
   if (!user) return false;
 
   const sameDepartment = user.departmentId === departmentId;
-  const hasAdminAccess = user.role?.permissions?.admin ||
-                        user.role?.permissions?.allDepartments ||
-                        user.role?.permissions?.viewAllCases;
+  const hasAdminAccess = user.role?.name === 'super_admin' ||
+                        user.role?.name === 'department_admin';
 
   return sameDepartment || hasAdminAccess;
 }

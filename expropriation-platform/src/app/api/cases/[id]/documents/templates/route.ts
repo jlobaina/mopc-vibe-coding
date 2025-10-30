@@ -191,7 +191,7 @@ Tasador Profesional Mat. [MATRICULA_TASADOR]
 // GET /api/cases/[id]/documents/templates - Get available templates for case stage
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -199,7 +199,7 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const caseId = params.id;
+    const { id: caseId } = await params;
     const { searchParams } = new URL(request.url);
     const documentType = searchParams.get('documentType');
 
@@ -208,6 +208,7 @@ export async function GET(
       where: { id: caseId },
       select: {
         id: true,
+        fileNumber: true,
         currentStage: true,
         departmentId: true,
         createdById: true,
@@ -292,7 +293,7 @@ export async function GET(
 // POST /api/cases/[id]/documents/templates - Create document from template
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -300,7 +301,7 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const caseId = params.id;
+    const { id: caseId } = await params;
     const { templateId, templateData, customizations } = await request.json();
 
     if (!templateId || !templateData) {
@@ -340,19 +341,27 @@ export async function POST(
     // Parse template ID to get type and key
     const [type, key] = templateId.split('_', 2);
 
-    if (!DOCUMENT_TEMPLATES[type as keyof typeof DOCUMENT_TEMPLATES] ||
-        !DOCUMENT_TEMPLATES[type as keyof typeof DOCUMENT_TEMPLATES][key]) {
+    const templateCategory = DOCUMENT_TEMPLATES[type as keyof typeof DOCUMENT_TEMPLATES];
+
+    if (!templateCategory) {
+      return NextResponse.json(
+        { error: 'Template category not found' },
+        { status: 404 }
+      );
+    }
+
+    const template = (templateCategory as any)[key];
+
+    if (!template) {
       return NextResponse.json(
         { error: 'Template not found' },
         { status: 404 }
       );
     }
 
-    const template = DOCUMENT_TEMPLATES[type as keyof typeof DOCUMENT_TEMPLATES][key];
-
     // Fill placeholders with template data
     let content = template.content;
-    template.placeholders.forEach(placeholder => {
+    template.placeholders.forEach((placeholder: string) => {
       const value = templateData[placeholder] || `[${placeholder}]`;
       content = content.replace(new RegExp(`\\[${placeholder}\\]`, 'g'), value);
     });
@@ -432,7 +441,7 @@ export async function POST(
     // Create activity log
     await prisma.activity.create({
       data: {
-        action: 'DOCUMENT_CREATED_FROM_TEMPLATE',
+        action: 'CREATED',
         entityType: 'document',
         entityId: document.id,
         description: `Document created from template: ${template.title}`,
@@ -442,6 +451,7 @@ export async function POST(
           templateId,
           documentId: document.id,
           documentTitle: document.title,
+          createdBy: 'template',
         },
       },
     });
@@ -478,9 +488,10 @@ async function hasDepartmentAccess(userId: string, departmentId: string): Promis
   if (!user) return false;
 
   const sameDepartment = user.departmentId === departmentId;
-  const hasAdminAccess = user.role?.permissions?.admin ||
-                        user.role?.permissions?.allDepartments ||
-                        user.role?.permissions?.viewAllCases;
+  const permissions = user.role?.permissions as any;
+  const hasAdminAccess = permissions?.admin ||
+                        permissions?.allDepartments ||
+                        permissions?.viewAllCases;
 
   return sameDepartment || hasAdminAccess;
 }

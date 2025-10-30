@@ -149,10 +149,16 @@ export async function GET(request: NextRequest) {
 
     // Skip deleted/archived documents unless specifically requested
     if (query.status !== 'ARCHIVED') {
-      where.OR = [
-        { status: { not: 'ARCHIVED' } },
-        ...(where.OR ? [where.OR] : [])
-      ];
+      if (where.OR) {
+        // If there's already an OR clause, we need to combine it with the archived filter
+        where.AND = [
+          { OR: where.OR },
+          { status: { not: 'ARCHIVED' } }
+        ];
+        delete where.OR;
+      } else {
+        where.status = { not: 'ARCHIVED' };
+      }
     }
 
     // Get total count

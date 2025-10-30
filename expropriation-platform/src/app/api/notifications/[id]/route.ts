@@ -6,7 +6,7 @@ import { prisma } from '@/lib/prisma';
 // Get specific notification
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -14,7 +14,7 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const notificationId = params.id;
+    const notificationId = (await params).id;
 
     // Get user
     const user = await prisma.user.findUnique({
@@ -63,7 +63,7 @@ export async function GET(
 // Mark notification as read
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -71,7 +71,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const notificationId = params.id;
+    const notificationId = (await params).id;
     const body = await request.json();
 
     // Get user
@@ -121,7 +121,7 @@ export async function PATCH(
 // Delete notification
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -129,7 +129,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const notificationId = params.id;
+    const notificationId = (await params).id;
 
     // Get user
     const user = await prisma.user.findUnique({

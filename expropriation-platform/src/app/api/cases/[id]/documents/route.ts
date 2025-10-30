@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
+import { DocumentFormData } from '@/types/client';
 
 // Validation schemas
 const createCaseDocumentSchema = z.object({
@@ -13,13 +14,13 @@ const createCaseDocumentSchema = z.object({
     'APPRAISAL', 'CONTRACT', 'CORRESPONDENCE', 'FINANCIAL', 'TECHNICAL', 'OTHER'
   ]),
   category: z.enum([
-    'ADMINISTRATIVE', 'LEGAL', 'TECHNICAL', 'FINANCIAL', 'CORRESPONDENCE',
-    'EVIDENCE', 'REPORT', 'PLAN', 'PERMIT', 'OTHER'
+    'LEGAL', 'TECHNICAL', 'FINANCIAL', 'ADMINISTRATIVE', 'COMMUNICATION',
+    'PHOTOGRAPHIC', 'MULTIMEDIA', 'TEMPLATE', 'REFERENCE', 'CORRESPONDENCE'
   ]),
   securityLevel: z.enum(['PUBLIC', 'INTERNAL', 'CONFIDENTIAL', 'RESTRICTED']).default('INTERNAL'),
   tags: z.string().optional(),
-  metadata: z.record(z.any()).optional(),
-  customFields: z.record(z.any()).optional(),
+  metadata: z.record(z.string(), z.any()).optional(),
+  customFields: z.record(z.string(), z.any()).optional(),
   retentionPeriod: z.number().optional(),
   expiresAt: z.string().datetime().optional(),
   stageSpecific: z.boolean().default(false),
@@ -29,7 +30,7 @@ const createCaseDocumentSchema = z.object({
 // GET /api/cases/[id]/documents - List documents for a specific case
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -37,7 +38,7 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const caseId = params.id;
+    const { id: caseId } = await params;
     const { searchParams } = new URL(request.url);
 
     // Verify case exists and user has access
@@ -79,7 +80,10 @@ export async function GET(
     const sortOrder = searchParams.get('sortOrder') || 'desc';
 
     // Build where clause
-    const where: any = { caseId };
+    const where: any = {
+      caseId,
+      status: { not: 'ARCHIVED' } // Exclude archived (soft deleted) documents
+    };
 
     if (search) {
       where.OR = [
@@ -147,10 +151,13 @@ export async function GET(
       updatedAt: doc.updatedAt.toISOString(),
     }));
 
-    // Get document statistics for the case
+    // Get document statistics for the case (excluding archived documents)
     const stats = await prisma.document.groupBy({
       by: ['documentType', 'category', 'status'],
-      where: { caseId },
+      where: {
+        caseId,
+        status: { not: 'ARCHIVED' } // Exclude archived documents from stats
+      },
       _count: true,
     });
 
@@ -176,7 +183,7 @@ export async function GET(
 // POST /api/cases/[id]/documents - Upload document to specific case
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -184,7 +191,7 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const caseId = params.id;
+    const { id: caseId } = await params;
 
     // Verify case exists and user has access
     const case_ = await prisma.case.findUnique({
@@ -217,40 +224,68 @@ export async function POST(
     // Parse form data
     const formData = await request.formData();
     const file = formData.get('file') as File;
-    const documentData = JSON.parse(formData.get('documentData') as string);
+    const rawDocumentData = JSON.parse(formData.get('documentData') as string);
 
     if (!file) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });
     }
 
     // Validate document data
-    const validatedData = createCaseDocumentSchema.parse(documentData);
+    const validatedData = createCaseDocumentSchema.parse(rawDocumentData);
 
     // Import document creation logic
     const { createDocumentWithFile } = await import('@/lib/documents');
 
+    // Build document data object to handle exactOptionalPropertyTypes
+    const documentData: Partial<DocumentFormData> = {
+      title: validatedData.title,
+      documentType: validatedData.documentType,
+      category: validatedData.category,
+      securityLevel: validatedData.securityLevel,
+      caseId,
+    };
+
+    // Only include optional fields if they exist
+    if (validatedData.description !== undefined) {
+      documentData.description = validatedData.description;
+    }
+    if (validatedData.tags !== undefined) {
+      documentData.tags = validatedData.tags;
+    }
+    if (validatedData.retentionPeriod !== undefined) {
+      documentData.retentionPeriod = validatedData.retentionPeriod;
+    }
+    if (validatedData.expiresAt !== undefined) {
+      documentData.expiresAt = validatedData.expiresAt;
+    }
+
+    // Handle metadata
+    const baseMetadata = validatedData.metadata || {};
+    documentData.metadata = {
+      ...baseMetadata,
+      uploadedAtStage: case_.currentStage,
+      caseFileNumber: (await prisma.case.findUnique({
+        where: { id: caseId },
+        select: { fileNumber: true }
+      }))?.fileNumber,
+    };
+
+    // Handle custom fields
+    if (validatedData.customFields !== undefined) {
+      documentData.customFields = validatedData.customFields;
+    }
+
     // Create document with case association
     const document = await createDocumentWithFile({
       file,
-      documentData: {
-        ...validatedData,
-        caseId,
-        metadata: {
-          ...validatedData.metadata,
-          uploadedAtStage: case_.currentStage,
-          caseFileNumber: (await prisma.case.findUnique({
-            where: { id: caseId },
-            select: { fileNumber: true }
-          }))?.fileNumber,
-        },
-      },
+      documentData,
       userId: session.user.id,
     });
 
     // Create activity log
     await prisma.activity.create({
       data: {
-        action: 'DOCUMENT_UPLOADED',
+        action: 'UPLOADED',
         entityType: 'document',
         entityId: document.id,
         description: `Document uploaded to case: ${document.title}`,
@@ -282,7 +317,7 @@ async function hasDepartmentAccess(userId: string, departmentId: string): Promis
     select: {
       departmentId: true,
       role: {
-        select: { permissions: true }
+        select: { name: true }
       }
     },
   });
@@ -291,9 +326,8 @@ async function hasDepartmentAccess(userId: string, departmentId: string): Promis
 
   // Check if user is in the same department or has admin permissions
   const sameDepartment = user.departmentId === departmentId;
-  const hasAdminAccess = user.role?.permissions?.admin ||
-                        user.role?.permissions?.allDepartments ||
-                        user.role?.permissions?.viewAllCases;
+  const hasAdminAccess = user.role?.name === 'super_admin' ||
+                        user.role?.name === 'department_admin';
 
   return sameDepartment || hasAdminAccess;
 }

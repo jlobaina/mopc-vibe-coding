@@ -4,22 +4,23 @@ import { z } from 'zod'
 const CaseStatusEnum = z.enum(['PENDIENTE', 'EN_PROGRESO', 'COMPLETADO', 'ARCHIVED', 'SUSPENDED', 'CANCELLED'])
 const PriorityEnum = z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT'])
 const CaseStageEnum = z.enum([
-  'INITIAL_REVIEW',
-  'LEGAL_REVIEW',
-  'TECHNICAL_EVALUATION',
-  'APPRAISAL',
-  'NEGOTIATION',
-  'DOCUMENTATION',
-  'PUBLIC_CONSULTATION',
-  'APPROVAL',
-  'PAYMENT',
-  'TRANSFER',
-  'FINAL_CLOSURE',
-  'QUALITY_CONTROL',
-  'AUDIT',
-  'REPORTING',
-  'ARCHIVE_PREPARATION',
-  'COMPLETED',
+  'RECEPCION_SOLICITUD',
+  'VERIFICACION_REQUISITOS',
+  'CARGA_DOCUMENTOS',
+  'ASIGNACION_ANALISTA',
+  'ANALISIS_PRELIMINAR',
+  'NOTIFICACION_PROPIETARIO',
+  'PERITAJE_TECNICO',
+  'DETERMINACION_VALOR',
+  'OFERTA_COMPRA',
+  'NEGOCIACION',
+  'APROBACION_ACUERDO',
+  'ELABORACION_ESCRITURA',
+  'FIRMA_DOCUMENTOS',
+  'REGISTRO_PROPIEDAD',
+  'DESEMBOLSO_PAGO',
+  'ENTREGA_INMUEBLE',
+  'CIERRE_ARCHIVO',
   'SUSPENDED',
   'CANCELLED'
 ])
@@ -40,7 +41,7 @@ export const CaseSchema = z.object({
 
   priority: PriorityEnum.default('MEDIUM'),
   status: CaseStatusEnum.default('PENDIENTE'),
-  currentStage: CaseStageEnum.default('INITIAL_REVIEW'),
+  currentStage: CaseStageEnum.default('RECEPCION_SOLICITUD'),
 
   // Dates
   startDate: z.coerce.date().optional(),
@@ -66,6 +67,8 @@ export const CaseSchema = z.object({
 
   propertyCoordinates: z.string()
     .regex(/^-?\d+\.?\d*,-?\d+\.?\d*$/, 'Las coordenadas deben estar en formato latitud,longitud')
+    .or(z.literal(''))
+    .nullable()
     .optional(),
 
   propertyArea: z.number()
@@ -85,14 +88,20 @@ export const CaseSchema = z.object({
   ownerIdentification: z.string()
     .min(3, 'La identificación del propietario debe tener al menos 3 caracteres')
     .max(50, 'La identificación no puede exceder 50 caracteres')
+    .or(z.literal(''))
+    .nullable()
     .optional(),
 
   ownerContact: z.string()
     .regex(/^[+]?[\d\s\-\(\)]+$/, 'El teléfono debe contener solo números y caracteres válidos')
+    .or(z.literal(''))
+    .nullable()
     .optional(),
 
   ownerEmail: z.string()
     .email('El email no es válido')
+    .or(z.literal(''))
+    .nullable()
     .optional(),
 
   ownerAddress: z.string()
@@ -145,14 +154,17 @@ export const CaseSchema = z.object({
   departmentId: z.string()
     .min(1, 'El departamento es requerido'),
 
-  assignedToId: z.string().optional(),
-  supervisedById: z.string().optional(),
+  assignedToId: z.string().nullable().optional(),
+  supervisedById: z.string().nullable().optional(),
 
   // Progress
   progressPercentage: z.number()
     .min(0, 'El procentaje debe ser al menos 0')
     .max(100, 'El porcentaje no puede exceder 100')
-    .default(0)
+    .default(0),
+
+  // Draft status
+  isDraft: z.boolean().default(true)
 })
 
 // Create case schema (subset of CaseSchema for creation)
@@ -183,7 +195,8 @@ export const CreateCaseSchema = CaseSchema.pick({
   assignedToId: true,
   supervisedById: true
 }).extend({
-  expectedEndDate: z.coerce.date().optional()
+  expectedEndDate: z.coerce.date().optional(),
+  isDraft: z.boolean().default(true)
 })
 
 // Update case schema (partial updates allowed)
@@ -237,13 +250,16 @@ export const CaseSearchSchema = z.object({
   startDateTo: z.coerce.date().optional(),
   expectedEndDateFrom: z.coerce.date().optional(),
   expectedEndDateTo: z.coerce.date().optional(),
+  createdAtFrom: z.coerce.date().optional(),
+  createdAtTo: z.coerce.date().optional(),
   ownerName: z.string().optional(),
   propertyAddress: z.string().optional(),
   fileNumber: z.string().optional(),
   page: z.coerce.number().min(1).default(1),
   limit: z.coerce.number().min(1).max(100).default(20),
   sortBy: z.enum(['createdAt', 'updatedAt', 'startDate', 'expectedEndDate', 'fileNumber', 'title', 'priority', 'status']).default('createdAt'),
-  sortOrder: z.enum(['asc', 'desc']).default('desc')
+  sortOrder: z.enum(['asc', 'desc']).default('desc'),
+  includeDrafts: z.boolean().default(false)
 })
 
 // Type exports

@@ -4,7 +4,6 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { logActivity } from '@/lib/activity-logger'
 import { CreateCaseSchema, CaseSearchSchema } from '@/lib/validations/case'
-import { z } from 'zod'
 
 // GET /api/cases - List cases with filtering and pagination
 export async function GET(request: NextRequest) {
@@ -21,7 +20,7 @@ export async function GET(request: NextRequest) {
     const searchResult = CaseSearchSchema.safeParse(searchParamsObject)
     if (!searchResult.success) {
       return NextResponse.json(
-        { error: 'Invalid search parameters', details: searchResult.error.errors },
+        { error: 'Invalid search parameters', details: searchResult.error },
         { status: 400 }
       )
     }
@@ -38,13 +37,15 @@ export async function GET(request: NextRequest) {
       startDateTo,
       expectedEndDateFrom,
       expectedEndDateTo,
+      createdAtFrom,
+      createdAtTo,
       ownerName,
       propertyAddress,
       fileNumber,
       page,
       limit,
       sortBy,
-      sortOrder
+      sortOrder,
     } = searchResult.data
 
     // Get user to check permissions
@@ -97,6 +98,13 @@ export async function GET(request: NextRequest) {
       where.expectedEndDate = {}
       if (expectedEndDateFrom) {where.expectedEndDate.gte = expectedEndDateFrom}
       if (expectedEndDateTo) {where.expectedEndDate.lte = expectedEndDateTo}
+    }
+
+    // Creation date filters
+    if (createdAtFrom || createdAtTo) {
+      where.createdAt = {}
+      if (createdAtFrom) {where.createdAt.gte = createdAtFrom}
+      if (createdAtTo) {where.createdAt.lte = createdAtTo}
     }
 
     // Apply department-based access control
@@ -209,12 +217,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const body = await request.json()
-    const validationResult = CreateCaseSchema.safeParse(body)
+    const requestBody = await request.json()
+    const validationResult = CreateCaseSchema.safeParse(requestBody)
 
     if (!validationResult.success) {
       return NextResponse.json(
-        { error: 'Invalid input', details: validationResult.error.errors },
+        { error: 'Invalid input', details: validationResult.error },
         { status: 400 }
       )
     }
@@ -232,7 +240,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if user has permission to create cases
-    const role = user.role.name as string
+    const role = user.role.name.toUpperCase() as string
     if (!['SUPER_ADMIN', 'DEPARTMENT_ADMIN', 'ANALYST', 'SUPERVISOR'].includes(role)) {
       return NextResponse.json(
         { error: 'Insufficient permissions to create cases' },
@@ -320,7 +328,25 @@ export async function POST(request: NextRequest) {
       data: {
         ...caseData,
         createdById: user.id,
-        startDate: new Date()
+        startDate: new Date(),
+        // Convert undefined to null for optional fields that Prisma expects as nullable
+        description: caseData.description ?? null,
+        propertyDescription: caseData.propertyDescription ?? null,
+        propertyCoordinates: caseData.propertyCoordinates ?? null,
+        propertyArea: caseData.propertyArea ?? null,
+        propertyType: caseData.propertyType ?? null,
+        ownerIdentification: caseData.ownerIdentification ?? null,
+        ownerContact: caseData.ownerContact ?? null,
+        ownerEmail: caseData.ownerEmail ?? null,
+        ownerAddress: caseData.ownerAddress ?? null,
+        ownerType: caseData.ownerType ?? null,
+        estimatedValue: caseData.estimatedValue ?? null,
+        expropriationDecree: caseData.expropriationDecree ?? null,
+        judicialCaseNumber: caseData.judicialCaseNumber ?? null,
+        legalStatus: caseData.legalStatus ?? null,
+        assignedToId: caseData.assignedToId ?? null,
+        supervisedById: caseData.supervisedById ?? null,
+        expectedEndDate: caseData.expectedEndDate ?? null
       },
       include: {
         department: {
@@ -356,6 +382,7 @@ export async function POST(request: NextRequest) {
         }
       }
     })
+    console.log(newCase);
 
     // Log case creation
     await logActivity({

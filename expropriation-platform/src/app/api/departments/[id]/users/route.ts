@@ -8,7 +8,7 @@ import { logActivity } from '@/lib/activity-logger';
 // GET /api/departments/[id]/users - Get users in a department
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -25,9 +25,11 @@ export async function GET(
     const sortBy = searchParams.get('sortBy') || 'firstName';
     const sortOrder = searchParams.get('sortOrder') || 'asc';
 
+    const { id } = await params;
+
     // Check if department exists
     const department = await prisma.department.findUnique({
-      where: { id: params.id },
+      where: { id },
       select: { id: true, name: true },
     });
 
@@ -40,7 +42,7 @@ export async function GET(
 
     // Build where clause
     const where: any = {
-      departmentId: params.id,
+      departmentId: id,
       deletedAt: null,
     };
 
@@ -134,7 +136,7 @@ const transferUserSchema = z.object({
 // POST /api/departments/[id]/users - Transfer users to another department
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -154,7 +156,7 @@ export async function POST(
     const body = await request.json();
     const validatedData = transferUserSchema.parse(body);
 
-    const sourceDepartmentId = params.id;
+    const { id: sourceDepartmentId } = await params;
     const { destinationDepartmentId, userIds, transferType, reason, scheduledFor, notes } = validatedData;
 
     // Validate source department

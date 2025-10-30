@@ -15,7 +15,7 @@ const updateChecklistTemplateSchema = z.object({
 // GET /api/checklist/templates/[id] - Get specific template
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getSession();
@@ -24,7 +24,7 @@ export async function GET(
     }
 
     const template = await prisma.checklistTemplate.findUnique({
-      where: { id: params.id },
+      where: { id: (await params).id },
       include: {
         checklistItems: {
           orderBy: { sequence: 'asc' },
@@ -52,7 +52,7 @@ export async function GET(
 // PUT /api/checklist/templates/[id] - Update template
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getSession();
@@ -65,7 +65,7 @@ export async function PUT(
 
     // Check if template exists
     const existingTemplate = await prisma.checklistTemplate.findUnique({
-      where: { id: params.id },
+      where: { id: (await params).id },
     });
 
     if (!existingTemplate) {
@@ -76,7 +76,7 @@ export async function PUT(
     }
 
     const template = await prisma.checklistTemplate.update({
-      where: { id: params.id },
+      where: { id: (await params).id },
       data: validatedData,
       include: {
         checklistItems: {
@@ -116,7 +116,7 @@ export async function PUT(
 // DELETE /api/checklist/templates/[id] - Delete template
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getSession();
@@ -125,7 +125,7 @@ export async function DELETE(
     }
 
     const template = await prisma.checklistTemplate.findUnique({
-      where: { id: params.id },
+      where: { id: (await params).id },
     });
 
     if (!template) {
@@ -136,7 +136,7 @@ export async function DELETE(
     }
 
     await prisma.checklistTemplate.delete({
-      where: { id: params.id },
+      where: { id: (await params).id },
     });
 
     // Log activity
@@ -144,7 +144,7 @@ export async function DELETE(
       data: {
         action: ActivityType.DELETED,
         entityType: 'checklist_template',
-        entityId: params.id,
+        entityId: (await params).id,
         description: `Deleted checklist template: ${template.name}`,
         userId: session.user.id,
       },

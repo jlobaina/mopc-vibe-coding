@@ -7,7 +7,7 @@ import { z } from "zod";
 // PUT /api/meetings/[id]/participants/[participantId] - Update participant
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string; participantId: string } }
+  { params }: { params: Promise<{ id: string; participantId: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -47,14 +47,14 @@ export async function PUT(
     // Get meeting and participant
     const [meeting, participant] = await Promise.all([
       prisma.meeting.findUnique({
-        where: { id: params.id },
+        where: { id: (await params).id },
         include: {
           organizer: { select: { id: true } },
           chair: { select: { id: true } },
         },
       }),
       prisma.meetingParticipant.findUnique({
-        where: { id: params.participantId },
+        where: { id: (await params).participantId },
         include: {
           user: { select: { id: true } },
         },
@@ -100,7 +100,7 @@ export async function PUT(
 
       // Create delegation record
       await prisma.meetingParticipant.update({
-        where: { id: params.participantId },
+        where: { id: (await params).participantId },
         data: {
           delegatedTo: validatedData.delegatedTo,
           delegationReason: validatedData.delegationReason,
@@ -111,7 +111,7 @@ export async function PUT(
       // Create delegation notification
       await prisma.meetingNotification.create({
         data: {
-          meetingId: params.id,
+          meetingId: (await params).id,
           recipientId: validatedData.delegatedTo,
           type: "INVITATION",
           title: `Meeting Delegation: ${meeting.title}`,
@@ -138,7 +138,7 @@ export async function PUT(
 
     // Update participant
     const updatedParticipant = await prisma.meetingParticipant.update({
-      where: { id: params.participantId },
+      where: { id: (await params).participantId },
       data: {
         ...validatedData,
         ...(validatedData.permissions && {
@@ -176,7 +176,7 @@ export async function PUT(
         description: `Updated participant: ${participant.user?.firstName || participant.name} ${participant.user?.lastName || ""}`,
         userId: session.user.id,
         metadata: {
-          meetingId: params.id,
+          meetingId: (await params).id,
           updatedFields: Object.keys(validatedData),
         },
       },
@@ -201,7 +201,7 @@ export async function PUT(
 // DELETE /api/meetings/[id]/participants/[participantId] - Remove participant
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string; participantId: string } }
+  { params }: { params: Promise<{ id: string; participantId: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -212,14 +212,14 @@ export async function DELETE(
     // Get meeting and participant
     const [meeting, participant] = await Promise.all([
       prisma.meeting.findUnique({
-        where: { id: params.id },
+        where: { id: (await params).id },
         include: {
           organizer: { select: { id: true } },
           chair: { select: { id: true } },
         },
       }),
       prisma.meetingParticipant.findUnique({
-        where: { id: params.participantId },
+        where: { id: (await params).participantId },
         include: {
           user: { select: { id: true, firstName: true, lastName: true, email: true } },
         },
@@ -251,12 +251,12 @@ export async function DELETE(
 
     // Remove participant
     await prisma.meetingParticipant.delete({
-      where: { id: params.participantId },
+      where: { id: (await params).participantId },
     });
 
     // Update meeting participant count
     await prisma.meeting.update({
-      where: { id: params.id },
+      where: { id: (await params).id },
       data: {
         invitedCount: {
           decrement: 1,
@@ -275,7 +275,7 @@ export async function DELETE(
         description: `Removed participant: ${participant.user?.firstName || participant.name} ${participant.user?.lastName || ""}`,
         userId: session.user.id,
         metadata: {
-          meetingId: params.id,
+          meetingId: (await params).id,
           participantEmail: participant.user?.email || participant.email,
         },
       },
@@ -285,7 +285,7 @@ export async function DELETE(
     if (participant.user) {
       await prisma.meetingNotification.create({
         data: {
-          meetingId: params.id,
+          meetingId: (await params).id,
           recipientId: participant.user.id,
           type: "CANCELLATION",
           title: `Meeting Invitation Cancelled: ${meeting.title}`,

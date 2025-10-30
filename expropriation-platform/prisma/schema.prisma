@@ -838,6 +838,7 @@ model Case {
   currentStage CaseStage  @default(RECEPCION_SOLICITUD)
   priority     Priority   @default(MEDIUM)
   status       CaseStatus @default(PENDIENTE)
+  isDraft      Boolean    @default(true)
 
   // Dates
   startDate       DateTime  @default(now())

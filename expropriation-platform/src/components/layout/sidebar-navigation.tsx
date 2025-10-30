@@ -54,22 +54,7 @@ const navigationItems: NavItem[] = [
     title: 'Expropiaciones',
     href: '/cases',
     icon: FileText,
-    description: 'Gestión de casos de expropiación',
-    children: [
-      {
-        title: 'Todos los Casos',
-        href: '/cases',
-        icon: FileText,
-        description: 'Ver todos los casos de expropiación'
-      },
-      {
-        title: 'Nuevo Caso',
-        href: '/cases?action=create',
-        icon: FileText,
-        description: 'Crear un nuevo caso de expropiación',
-        roles: ['super_admin', 'department_admin', 'analyst']
-      }
-    ]
+    description: 'Gestión de casos de expropiación'
   },
   {
     title: 'Reuniones',

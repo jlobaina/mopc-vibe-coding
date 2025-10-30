@@ -3,15 +3,15 @@
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { Plus, Search, Filter, Download, RefreshCw } from 'lucide-react'
+import { Plus, Search, RefreshCw, FileText } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from 'react-hot-toast'
 
@@ -65,12 +65,28 @@ export default function CasesPage() {
   const fetchCases = async () => {
     try {
       setLoading(true)
-      const params = new URLSearchParams({
+
+      // Build URL parameters, filtering out undefined values and converting Dates to strings
+      const paramsObj = {
         ...searchParams,
         query: debouncedQuery,
         page: searchParams.page.toString(),
         limit: searchParams.limit.toString()
+      }
+
+      // Filter out undefined values and convert Date objects to ISO strings
+      const cleanedParams: Record<string, string> = {}
+      Object.entries(paramsObj).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          if (value instanceof Date) {
+            cleanedParams[key] = value.toISOString()
+          } else {
+            cleanedParams[key] = String(value)
+          }
+        }
       })
+
+      const params = new URLSearchParams(cleanedParams)
 
       const response = await fetch(`/api/cases?${params}`)
       if (!response.ok) {
@@ -123,8 +139,8 @@ export default function CasesPage() {
   }
 
   // Format date
-  const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString('es-DO', {
+  const formatDate = (date: Date) => {
+    return date.toLocaleDateString('es-DO', {
       year: 'numeric',
       month: 'short',
       day: 'numeric'
@@ -158,16 +174,20 @@ export default function CasesPage() {
   return (
     <div className="container mx-auto py-8">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Gestión de Casos</h1>
           <p className="text-muted-foreground">
             Administra y supervisa todos los casos de expropiación
           </p>
         </div>
-        <Button onClick={() => router.push('/cases/create')}>
-          <Plus className="mr-2 h-4 w-4" />
-          Nuevo Caso
+        <Button
+          onClick={() => router.push('/cases/create')}
+          size="lg"
+          className="bg-primary hover:bg-primary/90"
+        >
+          <Plus className="mr-2 h-5 w-5" />
+          Crear Nuevo Caso
         </Button>
       </div>
 
@@ -215,7 +235,7 @@ export default function CasesPage() {
                   <SelectValue placeholder="Prioridad" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="ALL">Todas</SelectItem>
+                  <SelectItem value="ALL">Todas las prioridades</SelectItem>
                   {PRIORITIES.map(priority => (
                     <SelectItem key={priority.value} value={priority.value}>
                       {priority.label}
@@ -268,39 +288,55 @@ export default function CasesPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Número</TableHead>
+                    <TableHead>Prioridad</TableHead>
                     <TableHead>Título</TableHead>
-                    <TableHead>Propietario</TableHead>
                     <TableHead>Departamento</TableHead>
                     <TableHead>Asignado a</TableHead>
                     <TableHead>Estado</TableHead>
-                    <TableHead>Prioridad</TableHead>
                     <TableHead>Progreso</TableHead>
-                    <TableHead>Creación</TableHead>
-                    <TableHead>Acciones</TableHead>
+                    <TableHead>Fecha límite</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {cases.map((case_) => (
                     <TableRow
                       key={case_.id}
-                      className="cursor-pointer hover:bg-muted/50"
+                      className={`cursor-pointer hover:bg-muted/50 ${case_.isDraft ? 'bg-gray-50/30' : ''}`}
                       onClick={() => router.push(`/cases/${case_.id}`)}
                     >
-                      <TableCell className="font-medium">
-                        {case_.fileNumber}
+                      <TableCell>
+                        <Badge className={getPriorityBadge(case_.priority).color}>
+                          {getPriorityBadge(case_.priority).label}
+                        </Badge>
                       </TableCell>
                       <TableCell>
-                        <div>
-                          <div className="font-medium">{case_.title}</div>
-                          {case_.description && (
-                            <div className="text-sm text-muted-foreground truncate max-w-xs">
-                              {case_.description}
-                            </div>
+                        <div className="flex items-center gap-2">
+                          {case_.isDraft && (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <div className="flex items-center justify-center">
+                                    <FileText className="h-4 w-4 text-gray-400 cursor-help" />
+                                  </div>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Este caso es un borrador</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
                           )}
+                          <div>
+                            <div className={`font-medium ${case_.isDraft ? 'text-gray-500 italic' : ''}`}>
+                              {case_.title}
+                            </div>
+                            {case_.description && (
+                              <div className={`text-sm truncate max-w-xs ${case_.isDraft ? 'text-gray-400' : 'text-muted-foreground'}`}>
+                                {case_.description}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </TableCell>
-                      <TableCell>{case_.ownerName}</TableCell>
                       <TableCell>
                         <Badge variant="outline">
                           {case_.department?.code}
@@ -310,7 +346,7 @@ export default function CasesPage() {
                         {case_.assignedTo ? (
                           <div>
                             <div className="text-sm">
-                              {case_.assignedTo.firstName} {case_.assignedTo.lastName}
+                              {case_.assignedTo.name}
                             </div>
                           </div>
                         ) : (
@@ -320,11 +356,6 @@ export default function CasesPage() {
                       <TableCell>
                         <Badge className={getStatusBadge(case_.status).color}>
                           {getStatusBadge(case_.status).label}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge className={getPriorityBadge(case_.priority).color}>
-                          {getPriorityBadge(case_.priority).label}
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -341,19 +372,7 @@ export default function CasesPage() {
                         </div>
                       </TableCell>
                       <TableCell className="text-sm">
-                        {formatDate(case_.createdAt)}
-                      </TableCell>
-                      <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            router.push(`/cases/${case_.id}`)
-                          }}
-                        >
-                          Ver
-                        </Button>
+                        {case_.actualEndDate && formatDate(case_.actualEndDate) || <span className='text-muted-foreground'>No definida</span>}
                       </TableCell>
                     </TableRow>
                   ))}

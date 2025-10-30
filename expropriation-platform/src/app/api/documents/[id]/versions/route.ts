@@ -19,7 +19,7 @@ const createVersionSchema = z.object({
 // GET /api/documents/[id]/versions - Get document versions
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -27,7 +27,7 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { id } = params;
+    const { id } = await params;
 
     // Check if document exists and user has permission
     const document = await prisma.document.findUnique({
@@ -102,7 +102,7 @@ export async function GET(
 // POST /api/documents/[id]/versions - Create new document version
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -110,7 +110,7 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { id } = params;
+    const { id } = await params;
     const formData = await request.formData();
     const file = formData.get('file') as File;
     const versionData = JSON.parse(formData.get('versionData') as string);

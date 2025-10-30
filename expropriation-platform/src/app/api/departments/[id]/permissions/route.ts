@@ -15,7 +15,7 @@ const permissionAssignmentSchema = z.object({
 // GET /api/departments/[id]/permissions - Get department permissions
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -25,7 +25,7 @@ export async function GET(
 
     // Check if department exists
     const department = await prisma.department.findUnique({
-      where: { id: params.id },
+      where: { id: (await params).id },
       select: { id: true, name: true, code: true, parentId },
     });
 
@@ -45,7 +45,7 @@ export async function GET(
     // Get department-specific permissions
     const departmentPermissions = await prisma.departmentPermission.findMany({
       where: {
-        departmentId: params.id,
+        departmentId: (await params).id,
       },
       include: {
         permission: true,
@@ -54,10 +54,10 @@ export async function GET(
     });
 
     // Get inherited permissions from parent departments
-    const inheritedPermissions = await getInheritedPermissions(params.id);
+    const inheritedPermissions = await getInheritedPermissions((await params).id);
 
     // Get permissions through user roles
-    const roleBasedPermissions = await getRoleBasedPermissions(params.id);
+    const roleBasedPermissions = await getRoleBasedPermissions((await params).id);
 
     return NextResponse.json({
       department,
@@ -85,7 +85,7 @@ export async function GET(
 // POST /api/departments/[id]/permissions - Assign permissions to department
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -107,7 +107,7 @@ export async function POST(
 
     // Check if department exists
     const department = await prisma.department.findUnique({
-      where: { id: params.id },
+      where: { id: (await params).id },
       select: { id: true, name: true, code: true },
     });
 
@@ -140,7 +140,7 @@ export async function POST(
         const existing = await prisma.departmentPermission.findUnique({
           where: {
             departmentId_permissionId: {
-              departmentId: params.id,
+              departmentId: (await params).id,
               permissionId,
             },
           },
@@ -151,7 +151,7 @@ export async function POST(
           return await prisma.departmentPermission.update({
             where: {
               departmentId_permissionId: {
-                departmentId: params.id,
+                departmentId: (await params).id,
                 permissionId,
               },
             },
@@ -165,7 +165,7 @@ export async function POST(
           // Create new assignment
           return await prisma.departmentPermission.create({
             data: {
-              departmentId: params.id,
+              departmentId: (await params).id,
               permissionId,
               isGranted,
               expiresAt: expiresAt ? new Date(expiresAt) : null,
@@ -181,7 +181,7 @@ export async function POST(
       userId: session.user.id,
       action: 'UPDATED',
       entityType: 'department',
-      entityId: params.id,
+      entityId: (await params).id,
       description: `Permisos ${isGranted ? 'otorgados' : 'revocados'} al departamento: ${department.name}`,
       metadata: {
         departmentName: department.name,
@@ -222,7 +222,7 @@ export async function POST(
 // PUT /api/departments/[id]/permissions/[permissionId] - Update specific permission
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string; permissionId: string } }
+  { params }: { params: Promise<{ id: string; permissionId: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -230,7 +230,7 @@ export async function PUT(
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
 
-    const { id: departmentId, permissionId } = params;
+    const { id: departmentId, permissionId } = await params;
     const body = await request.json();
     const { isGranted, expiresAt } = permissionAssignmentSchema.partial().parse(body);
 
@@ -349,7 +349,7 @@ export async function PUT(
 // DELETE /api/departments/[id]/permissions/[permissionId] - Remove permission assignment
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string; permissionId: string } }
+  { params }: { params: Promise<{ id: string; permissionId: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -357,7 +357,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
 
-    const { id: departmentId, permissionId } = params;
+    const { id: departmentId, permissionId } = await params;
 
     // Check if department exists
     const department = await prisma.department.findUnique({

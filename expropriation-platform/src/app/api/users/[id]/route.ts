@@ -46,8 +46,6 @@ export async function GET(
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
 
-    const { id } = params;
-
     const user = await prisma.user.findUnique({
       where: { id },
       include: {
@@ -114,7 +112,7 @@ export async function PUT(
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
 
-    const { id } = params;
+    const { id } = await params;
     const body = await request.json();
     const validatedData = updateUserSchema.parse(body);
 
@@ -282,7 +280,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
 
-    const { id } = params;
+    const { id } = await params;
 
     // Check if user exists
     const user = await prisma.user.findUnique({

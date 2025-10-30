@@ -14,7 +14,7 @@ const updateApprovalSchema = z.object({
 // GET /api/approvals/workflows/[id]/approvals - Get workflow approvals
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getSession();
@@ -24,7 +24,7 @@ export async function GET(
 
     // Check if workflow exists and user has access
     const workflow = await prisma.approvalWorkflow.findUnique({
-      where: { id: params.id },
+      where: { id: (await params).id },
       include: {
         approvals: {
           include: {
@@ -79,7 +79,7 @@ export async function GET(
 // POST /api/approvals/workflows/[id]/approvals - Submit approval decision
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getSession();
@@ -92,7 +92,7 @@ export async function POST(
 
     // Check if workflow exists and is pending
     const workflow = await prisma.approvalWorkflow.findUnique({
-      where: { id: params.id },
+      where: { id: (await params).id },
       include: {
         approvals: true,
         case: true,
@@ -117,7 +117,7 @@ export async function POST(
     let approval = await prisma.approval.findUnique({
       where: {
         workflowId_userId: {
-          workflowId: params.id,
+          workflowId: (await params).id,
           userId: session.user.id,
         },
       },
@@ -135,18 +135,29 @@ export async function POST(
       (new Date().getTime() - new Date(workflow.createdAt).getTime()) / (1000 * 60 * 60)
     );
 
+    const updateData: any = {
+      decision: validatedData.decision,
+      reviewedAt: new Date(),
+      responseTime,
+      ipAddress: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || '',
+      userAgent: request.headers.get('user-agent') || '',
+    };
+
+    if (validatedData.comments !== undefined) {
+      updateData.comments = validatedData.comments;
+    }
+
+    if (validatedData.conditions !== undefined) {
+      updateData.conditions = validatedData.conditions;
+    }
+
+    if (validatedData.delegationTo !== undefined) {
+      updateData.delegationTo = validatedData.delegationTo;
+    }
+
     approval = await prisma.approval.update({
       where: { id: approval.id },
-      data: {
-        decision: validatedData.decision,
-        comments: validatedData.comments,
-        conditions: validatedData.conditions,
-        delegationTo: validatedData.delegationTo,
-        reviewedAt: new Date(),
-        responseTime,
-        ipAddress: request.ip || request.headers.get('x-forwarded-for') || '',
-        userAgent: request.headers.get('user-agent') || '',
-      },
+      data: updateData,
       include: {
         user: {
           select: {
@@ -161,14 +172,14 @@ export async function POST(
 
     // Check if workflow can be completed
     const allApprovals = await prisma.approval.findMany({
-      where: { workflowId: params.id },
+      where: { workflowId: (await params).id },
     });
 
     const approvedCount = allApprovals.filter(a => a.decision === ApprovalStatus.APPROVED).length;
     const rejectedCount = allApprovals.filter(a => a.decision === ApprovalStatus.REJECTED).length;
     const totalApprovals = allApprovals.length;
 
-    let workflowStatus = workflow.status;
+    let workflowStatus: ApprovalStatus = workflow.status;
     let completedAt = null;
     let completedBy = null;
 
@@ -187,7 +198,7 @@ export async function POST(
     // Update workflow status if changed
     if (workflowStatus !== workflow.status) {
       await prisma.approvalWorkflow.update({
-        where: { id: params.id },
+        where: { id: (await params).id },
         data: {
           status: workflowStatus,
           completedAt,
@@ -223,7 +234,7 @@ export async function POST(
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Validation failed', details: error.errors },
+        { error: 'Validation failed', details: error.issues },
         { status: 400 }
       );
     }

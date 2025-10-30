@@ -11,7 +11,7 @@ interface Props {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const caseInfo = await prisma.case.findUnique({
-    where: { id: params.id },
+    where: { id: (await params).id },
     select: {
       fileNumber: true,
       title: true,
@@ -32,7 +32,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function ValidationPage({ params }: Props) {
   const caseInfo = await prisma.case.findUnique({
-    where: { id: params.id },
+    where: { id: (await params).id },
     select: {
       id: true,
       fileNumber: true,

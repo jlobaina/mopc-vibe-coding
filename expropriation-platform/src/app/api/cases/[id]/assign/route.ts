@@ -8,7 +8,7 @@ import { CaseAssignmentSchema } from '@/lib/validations/case'
 // PUT /api/cases/[id]/assign - Assign or reassign a case
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -16,7 +16,7 @@ export async function PUT(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const caseId = params.id
+    const { id: caseId } = await params
     const body = await request.json()
     const validationResult = CaseAssignmentSchema.safeParse(body)
 

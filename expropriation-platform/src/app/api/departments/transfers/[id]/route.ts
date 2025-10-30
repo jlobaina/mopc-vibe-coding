@@ -14,7 +14,7 @@ const transferActionSchema = z.object({
 // POST /api/departments/transfers/[id]/action - Approve or reject transfer
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -36,7 +36,7 @@ export async function POST(
 
     // Find transfer
     const transfer = await prisma.departmentTransfer.findUnique({
-      where: { id: params.id },
+      where: { id: (await params).id },
       include: {
         user: {
           select: {
@@ -92,7 +92,7 @@ export async function POST(
 
       // Update transfer
       updatedTransfer = await prisma.departmentTransfer.update({
-        where: { id: params.id },
+        where: { id: (await params).id },
         data: {
           status: 'COMPLETED',
           completedAt: new Date(),
@@ -132,7 +132,7 @@ export async function POST(
     } else {
       // Reject transfer
       updatedTransfer = await prisma.departmentTransfer.update({
-        where: { id: params.id },
+        where: { id: (await params).id },
         data: {
           status: 'CANCELLED',
           notes: notes || transfer.notes,
@@ -201,7 +201,7 @@ export async function POST(
 // PUT /api/departments/transfers/[id] - Update transfer
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -223,7 +223,7 @@ export async function PUT(
 
     // Find transfer
     const transfer = await prisma.departmentTransfer.findUnique({
-      where: { id: params.id },
+      where: { id: (await params).id },
       include: {
         user: {
           select: {
@@ -258,7 +258,7 @@ export async function PUT(
 
     // Update transfer
     const updatedTransfer = await prisma.departmentTransfer.update({
-      where: { id: params.id },
+      where: { id: (await params).id },
       data: {
         ...(scheduledFor && { scheduledFor: new Date(scheduledFor) }),
         ...(notes && { notes }),
@@ -329,7 +329,7 @@ export async function PUT(
 // DELETE /api/departments/transfers/[id] - Cancel transfer
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -348,7 +348,7 @@ export async function DELETE(
 
     // Find transfer
     const transfer = await prisma.departmentTransfer.findUnique({
-      where: { id: params.id },
+      where: { id: (await params).id },
       include: {
         user: {
           select: {
@@ -383,7 +383,7 @@ export async function DELETE(
 
     // Cancel transfer
     await prisma.departmentTransfer.update({
-      where: { id: params.id },
+      where: { id: (await params).id },
       data: {
         status: 'CANCELLED',
         metadata: {
