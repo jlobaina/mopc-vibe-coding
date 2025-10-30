@@ -43,7 +43,7 @@ function CaseDetailSkeleton() {
 export default function CaseDetailPage() {
   const router = useRouter()
   const params = useParams()
-  const caseId = params.id as string
+  const caseId = String(params?.id)
 
   const { case: caseData, loading, refreshCase, status } = useCase(caseId)
   const [activeTab, setActiveTab] = useState('overview')
@@ -58,8 +58,8 @@ export default function CaseDetailPage() {
 
   // Handle document selection
   const handleDocumentSelect = (document: Document) => {
-    // Could open a detail modal or navigate to document details
-    console.log('Selected document:', document)
+    // TODO: Implement document detail view or navigation
+    // This would typically open a modal or navigate to a document detail page
   }
 
   if (status === 'loading' || loading) {
@@ -89,6 +89,7 @@ export default function CaseDetailPage() {
 
   const statusConfig = getStatusConfig(caseData.status)
   const priorityConfig = getPriorityConfig(caseData.priority)
+  const documentsCount = caseData._count?.documents || 0;
 
   return (
     <div className="container mx-auto py-8">
@@ -136,9 +137,9 @@ export default function CaseDetailPage() {
             <div className="flex items-center gap-2">
               <FolderOpen className="h-4 w-4" />
               Documentos
-              {caseData._count?.documents > 0 && (
+              {documentsCount > 0 && (
                 <Badge variant="secondary" className="ml-1">
-                  {caseData._count.documents}
+                  {documentsCount}
                 </Badge>
               )}
             </div>
