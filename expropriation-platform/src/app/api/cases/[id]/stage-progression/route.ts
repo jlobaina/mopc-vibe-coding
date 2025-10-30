@@ -22,7 +22,7 @@ const returnSchema = z.object({
 // Get stage progression history for a case
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -30,7 +30,7 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const caseId = params.id;
+    const { id: caseId } = await params;
 
     // Get case with current stage
     const currentCase = await prisma.case.findUnique({
@@ -104,7 +104,7 @@ export async function GET(
 // Progress case to next stage or return to previous stage
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -112,7 +112,7 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const caseId = params.id;
+    const { id: caseId } = await params;
     const body = await request.json();
 
     // Validate request body

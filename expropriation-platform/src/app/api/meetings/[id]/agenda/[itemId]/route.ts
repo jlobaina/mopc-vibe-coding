@@ -7,7 +7,7 @@ import { z } from "zod";
 // GET /api/meetings/[id]/agenda/[itemId] - Get specific agenda item
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string; itemId: string } }
+  { params }: { params: Promise<{ id: string; itemId: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -18,7 +18,7 @@ export async function GET(
     // Verify meeting and agenda item exist
     const [meeting, agendaItem] = await Promise.all([
       prisma.meeting.findUnique({
-        where: { id: params.id },
+        where: { id: (await params).id },
         include: {
           organizer: { select: { id: true } },
           chair: { select: { id: true } },
@@ -26,7 +26,7 @@ export async function GET(
         },
       }),
       prisma.meetingAgendaItem.findUnique({
-        where: { id: params.itemId },
+        where: { id: (await params).itemId },
         include: {
           presenter: {
             select: {
@@ -98,7 +98,7 @@ export async function GET(
     }
 
     // Check if agenda item belongs to the meeting
-    if (agendaItem.meetingId !== params.id) {
+    if (agendaItem.meetingId !== (await params).id) {
       return NextResponse.json({ error: "Agenda item does not belong to this meeting" }, { status: 400 });
     }
 
@@ -129,7 +129,7 @@ export async function GET(
 // PUT /api/meetings/[id]/agenda/[itemId] - Update agenda item
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string; itemId: string } }
+  { params }: { params: Promise<{ id: string; itemId: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -181,7 +181,7 @@ export async function PUT(
     // Get meeting and agenda item
     const [meeting, agendaItem] = await Promise.all([
       prisma.meeting.findUnique({
-        where: { id: params.id },
+        where: { id: (await params).id },
         include: {
           organizer: { select: { id: true } },
           chair: { select: { id: true } },
@@ -189,7 +189,7 @@ export async function PUT(
         },
       }),
       prisma.meetingAgendaItem.findUnique({
-        where: { id: params.itemId },
+        where: { id: (await params).itemId },
         include: {
           presenter: { select: { id: true } },
           owner: { select: { id: true } },
@@ -206,7 +206,7 @@ export async function PUT(
     }
 
     // Check if agenda item belongs to the meeting
-    if (agendaItem.meetingId !== params.id) {
+    if (agendaItem.meetingId !== (await params).id) {
       return NextResponse.json({ error: "Agenda item does not belong to this meeting" }, { status: 400 });
     }
 
@@ -226,7 +226,7 @@ export async function PUT(
 
     // Handle sequence reordering
     if (validatedData.sequence !== undefined && validatedData.sequence !== agendaItem.sequence) {
-      await reorderAgendaItems(params.id, agendaItem.sequence, validatedData.sequence);
+      await reorderAgendaItems((await params).id, agendaItem.sequence, validatedData.sequence);
     }
 
     // Validate presenter and owner if changed
@@ -252,7 +252,7 @@ export async function PUT(
 
     // Update agenda item
     const updatedItem = await prisma.meetingAgendaItem.update({
-      where: { id: params.itemId },
+      where: { id: (await params).itemId },
       data: {
         ...validatedData,
         materials: validatedData.materials || agendaItem.materials,
@@ -289,7 +289,7 @@ export async function PUT(
         description: `Updated agenda item: ${agendaItem.title}`,
         userId: session.user.id,
         metadata: {
-          meetingId: params.id,
+          meetingId: (await params).id,
           updatedFields: Object.keys(validatedData),
         },
       },
@@ -299,7 +299,7 @@ export async function PUT(
     if (validatedData.presenterId && validatedData.presenterId !== agendaItem.presenterId) {
       await prisma.meetingNotification.create({
         data: {
-          meetingId: params.id,
+          meetingId: (await params).id,
           recipientId: validatedData.presenterId,
           type: "UPDATE",
           title: `Presentation Assignment: ${updatedItem.title}`,
@@ -344,7 +344,7 @@ export async function PUT(
 // DELETE /api/meetings/[id]/agenda/[itemId] - Delete agenda item
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string; itemId: string } }
+  { params }: { params: Promise<{ id: string; itemId: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -355,7 +355,7 @@ export async function DELETE(
     // Get meeting and agenda item
     const [meeting, agendaItem] = await Promise.all([
       prisma.meeting.findUnique({
-        where: { id: params.id },
+        where: { id: (await params).id },
         include: {
           organizer: { select: { id: true } },
           chair: { select: { id: true } },
@@ -363,7 +363,7 @@ export async function DELETE(
         },
       }),
       prisma.meetingAgendaItem.findUnique({
-        where: { id: params.itemId },
+        where: { id: (await params).itemId },
       }),
     ]);
 
@@ -376,7 +376,7 @@ export async function DELETE(
     }
 
     // Check if agenda item belongs to the meeting
-    if (agendaItem.meetingId !== params.id) {
+    if (agendaItem.meetingId !== (await params).id) {
       return NextResponse.json({ error: "Agenda item does not belong to this meeting" }, { status: 400 });
     }
 
@@ -405,11 +405,11 @@ export async function DELETE(
 
     // Delete agenda item
     await prisma.meetingAgendaItem.delete({
-      where: { id: params.itemId },
+      where: { id: (await params).itemId },
     });
 
     // Reorder remaining items
-    await reorderAfterDeletion(params.id, agendaItem.sequence);
+    await reorderAfterDeletion((await params).id, agendaItem.sequence);
 
     // Create activity log
     await prisma.activity.create({
@@ -420,7 +420,7 @@ export async function DELETE(
         description: `Deleted agenda item: ${agendaItem.title}`,
         userId: session.user.id,
         metadata: {
-          meetingId: params.id,
+          meetingId: (await params).id,
           deletedSequence: agendaItem.sequence,
         },
       },

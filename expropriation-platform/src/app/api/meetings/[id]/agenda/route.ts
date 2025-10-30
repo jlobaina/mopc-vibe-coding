@@ -7,7 +7,7 @@ import { z } from "zod";
 // GET /api/meetings/[id]/agenda - Get meeting agenda items
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -17,7 +17,7 @@ export async function GET(
 
     // Verify meeting exists and user has access
     const meeting = await prisma.meeting.findUnique({
-      where: { id: params.id },
+      where: { id: (await params).id },
       include: {
         organizer: { select: { id: true } },
         chair: { select: { id: true } },
@@ -44,7 +44,7 @@ export async function GET(
     }
 
     const agendaItems = await prisma.meetingAgendaItem.findMany({
-      where: { meetingId: params.id },
+      where: { meetingId: (await params).id },
       include: {
         presenter: {
           select: {
@@ -135,7 +135,7 @@ export async function GET(
 // POST /api/meetings/[id]/agenda - Add agenda items to meeting
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -183,7 +183,7 @@ export async function POST(
 
     // Verify meeting exists and user has permission
     const meeting = await prisma.meeting.findUnique({
-      where: { id: params.id },
+      where: { id: (await params).id },
       include: {
         organizer: { select: { id: true } },
         chair: { select: { id: true } },
@@ -257,7 +257,7 @@ export async function POST(
         // Create agenda item
         const agendaItem = await prisma.meetingAgendaItem.create({
           data: {
-            meetingId: params.id,
+            meetingId: (await params).id,
             title: itemData.title,
             description: itemData.description,
             type: itemData.type,
@@ -309,7 +309,7 @@ export async function POST(
             description: `Added agenda item: ${agendaItem.title}`,
             userId: session.user.id,
             metadata: {
-              meetingId: params.id,
+              meetingId: (await params).id,
               itemType: agendaItem.type,
               duration: agendaItem.plannedDuration,
             },
@@ -320,7 +320,7 @@ export async function POST(
         if (itemData.presenterId) {
           await prisma.meetingNotification.create({
             data: {
-              meetingId: params.id,
+              meetingId: (await params).id,
               recipientId: itemData.presenterId,
               type: "UPDATE",
               title: `Presentation Assignment: ${agendaItem.title}`,

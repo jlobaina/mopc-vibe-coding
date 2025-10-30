@@ -7,7 +7,7 @@ import { z } from "zod";
 // GET /api/meetings/[id] - Get a specific meeting
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -16,7 +16,7 @@ export async function GET(
     }
 
     const meeting = await prisma.meeting.findUnique({
-      where: { id: params.id },
+      where: { id: (await params).id },
       include: {
         organizer: {
           select: { id: true, firstName: true, lastName: true, email: true },
@@ -201,7 +201,7 @@ export async function GET(
 // PUT /api/meetings/[id] - Update a meeting
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -271,7 +271,7 @@ export async function PUT(
 
     // Get existing meeting
     const existingMeeting = await prisma.meeting.findUnique({
-      where: { id: params.id },
+      where: { id: (await params).id },
       include: { participants: true },
     });
 
@@ -328,7 +328,7 @@ export async function PUT(
 
     // Update meeting
     const meeting = await prisma.meeting.update({
-      where: { id: params.id },
+      where: { id: (await params).id },
       data: {
         ...validatedData,
         plannedDuration: duration,
@@ -389,7 +389,7 @@ export async function PUT(
 // DELETE /api/meetings/[id] - Delete a meeting
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -398,7 +398,7 @@ export async function DELETE(
     }
 
     const meeting = await prisma.meeting.findUnique({
-      where: { id: params.id },
+      where: { id: (await params).id },
     });
 
     if (!meeting) {
@@ -425,7 +425,7 @@ export async function DELETE(
 
     // Soft delete by marking as cancelled
     await prisma.meeting.update({
-      where: { id: params.id },
+      where: { id: (await params).id },
       data: {
         status: "CANCELLED",
         cancelledAt: new Date(),

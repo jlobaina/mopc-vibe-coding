@@ -191,7 +191,7 @@ Tasador Profesional Mat. [MATRICULA_TASADOR]
 // GET /api/cases/[id]/documents/templates - Get available templates for case stage
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -199,7 +199,7 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const caseId = params.id;
+    const { id: caseId } = await params;
     const { searchParams } = new URL(request.url);
     const documentType = searchParams.get('documentType');
 
@@ -292,7 +292,7 @@ export async function GET(
 // POST /api/cases/[id]/documents/templates - Create document from template
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -300,7 +300,7 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const caseId = params.id;
+    const { id: caseId } = await params;
     const { templateId, templateData, customizations } = await request.json();
 
     if (!templateId || !templateData) {

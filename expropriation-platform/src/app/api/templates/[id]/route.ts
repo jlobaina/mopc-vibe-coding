@@ -38,7 +38,7 @@ const useTemplateSchema = z.object({
 // GET /api/templates/[id] - Get a specific template
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -46,7 +46,7 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { id } = params;
+    const { id } = await params;
 
     // Get template with full details
     const template = await prisma.documentTemplate.findUnique({
@@ -143,7 +143,7 @@ export async function GET(
 // PUT /api/templates/[id] - Update template
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -151,7 +151,7 @@ export async function PUT(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { id } = params;
+    const { id } = await params;
     const body = await request.json();
     const validatedData = updateTemplateSchema.parse(body);
 
@@ -267,7 +267,7 @@ export async function PUT(
 // DELETE /api/templates/[id] - Delete template
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -275,7 +275,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { id } = params;
+    const { id } = await params;
 
     // Check if template exists and user has permission
     const existingTemplate = await prisma.documentTemplate.findUnique({
@@ -327,7 +327,7 @@ export async function DELETE(
 // POST /api/templates/[id]/versions - Create new template version
 export async function POST_VERSION(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -335,7 +335,7 @@ export async function POST_VERSION(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { id } = params;
+    const { id } = await params;
     const body = await request.json();
     const validatedData = createVersionSchema.parse(body);
 
@@ -423,7 +423,7 @@ export async function POST_VERSION(
 // POST /api/templates/[id]/use - Use template to create document
 export async function POST_USE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -431,7 +431,7 @@ export async function POST_USE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { id } = params;
+    const { id } = await params;
     const body = await request.json();
     const validatedData = useTemplateSchema.parse(body);
 
@@ -516,7 +516,7 @@ export async function POST_USE(
 // GET /api/templates/[id]/preview - Preview template with variables
 export async function GET_PREVIEW(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -524,7 +524,7 @@ export async function GET_PREVIEW(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { id } = params;
+    const { id } = await params;
     const { searchParams } = new URL(request.url);
     const variablesParam = searchParams.get('variables');
 

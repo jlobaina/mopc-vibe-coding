@@ -7,7 +7,7 @@ import { z } from "zod";
 // GET /api/meetings/[id]/participants - Get meeting participants
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -17,7 +17,7 @@ export async function GET(
 
     // Verify meeting exists and user has access
     const meeting = await prisma.meeting.findUnique({
-      where: { id: params.id },
+      where: { id: (await params).id },
       include: {
         organizer: { select: { id: true } },
         chair: { select: { id: true } },
@@ -44,7 +44,7 @@ export async function GET(
     }
 
     const participants = await prisma.meetingParticipant.findMany({
-      where: { meetingId: params.id },
+      where: { meetingId: (await params).id },
       include: {
         user: {
           select: {
@@ -88,7 +88,7 @@ export async function GET(
 // POST /api/meetings/[id]/participants - Add participants to meeting
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -133,7 +133,7 @@ export async function POST(
 
     // Verify meeting exists and user has permission
     const meeting = await prisma.meeting.findUnique({
-      where: { id: params.id },
+      where: { id: (await params).id },
       include: {
         organizer: { select: { id: true } },
         chair: { select: { id: true } },
@@ -176,7 +176,7 @@ export async function POST(
         // Check if participant already exists
         const existingParticipant = await prisma.meetingParticipant.findFirst({
           where: {
-            meetingId: params.id,
+            meetingId: (await params).id,
             OR: [
               ...(participantData.userId ? [{ userId: participantData.userId }] : []),
               ...(participantData.email ? [{ email: participantData.email }] : []),
@@ -195,7 +195,7 @@ export async function POST(
         // Create participant
         const participant = await prisma.meetingParticipant.create({
           data: {
-            meetingId: params.id,
+            meetingId: (await params).id,
             userId: participantData.userId,
             email: participantData.email,
             name: participantData.name,
@@ -234,7 +234,7 @@ export async function POST(
             description: `Added participant to meeting: ${participant.user?.firstName || participant.name} ${participant.user?.lastName || ""}`,
             userId: session.user.id,
             metadata: {
-              meetingId: params.id,
+              meetingId: (await params).id,
               participantRole: participant.role,
               isExternal: participant.isExternal,
             },
@@ -244,7 +244,7 @@ export async function POST(
         // Create invitation notification
         await prisma.meetingNotification.create({
           data: {
-            meetingId: params.id,
+            meetingId: (await params).id,
             recipientId: participantData.userId || "external",
             type: "INVITATION",
             title: `Meeting Invitation: ${meeting.title}`,
@@ -280,7 +280,7 @@ export async function POST(
 
     // Update meeting participant count
     await prisma.meeting.update({
-      where: { id: params.id },
+      where: { id: (await params).id },
       data: {
         invitedCount: {
           increment: addedParticipants.length,

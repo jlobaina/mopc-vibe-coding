@@ -11,7 +11,7 @@ const revokeSignatureSchema = z.object({
 // POST /api/signatures/[id]/revoke - Revoke a digital signature
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getSession();
@@ -24,7 +24,7 @@ export async function POST(
 
     // Check if signature exists and user has permission
     const signature = await prisma.digitalSignature.findUnique({
-      where: { id: params.id },
+      where: { id: (await params).id },
     });
 
     if (!signature) {
@@ -61,7 +61,7 @@ export async function POST(
 
     // Revoke the signature
     const revokedSignature = await prisma.digitalSignature.update({
-      where: { id: params.id },
+      where: { id: (await params).id },
       data: {
         isActive: false,
         revokedAt: new Date(),

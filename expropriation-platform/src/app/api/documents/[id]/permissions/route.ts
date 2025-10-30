@@ -36,7 +36,7 @@ const updatePermissionSchema = z.object({
 // GET /api/documents/[id]/permissions - Get document permissions
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -44,7 +44,7 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { id } = params;
+    const { id } = await params;
 
     // Check if document exists and user has permission to view permissions
     const document = await prisma.document.findUnique({
@@ -130,7 +130,7 @@ export async function GET(
 // POST /api/documents/[id]/permissions - Create new permission
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -138,7 +138,7 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { id } = params;
+    const { id } = await params;
     const body = await request.json();
     const validatedData = createPermissionSchema.parse(body);
 
@@ -331,7 +331,7 @@ export async function POST(
 // PUT /api/documents/[id]/permissions/[permissionId] - Update permission
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string; permissionId: string } }
+  { params }: { params: Promise<{ id: string; permissionId: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -339,7 +339,7 @@ export async function PUT(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { id, permissionId } = params;
+    const { id, permissionId } = await params;
     const body = await request.json();
     const validatedData = updatePermissionSchema.parse(body);
 
@@ -477,7 +477,7 @@ export async function PUT(
 // DELETE /api/documents/[id]/permissions/[permissionId] - Delete permission
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string; permissionId: string } }
+  { params }: { params: Promise<{ id: string; permissionId: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -485,7 +485,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { id, permissionId } = params;
+    const { id, permissionId } = await params;
 
     // Check if document exists and user has permission to manage permissions
     const document = await prisma.document.findUnique({

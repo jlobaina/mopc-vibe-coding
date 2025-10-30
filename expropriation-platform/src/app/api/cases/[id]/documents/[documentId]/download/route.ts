@@ -9,7 +9,7 @@ import crypto from 'crypto';
 // GET /api/cases/[id]/documents/[documentId]/download - Download document
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string; documentId: string } }
+  { params }: { params: Promise<{ id: string; documentId: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -17,7 +17,7 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { id: caseId, documentId } = params;
+    const { id: caseId, documentId } = await params;
     const { searchParams } = new URL(request.url);
     const version = searchParams.get('version'); // Optional version parameter
     const format = searchParams.get('format') || 'original'; // original, pdf, zip

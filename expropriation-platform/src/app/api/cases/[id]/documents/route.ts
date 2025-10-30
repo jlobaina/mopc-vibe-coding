@@ -29,7 +29,7 @@ const createCaseDocumentSchema = z.object({
 // GET /api/cases/[id]/documents - List documents for a specific case
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -37,7 +37,7 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const caseId = params.id;
+    const { id: caseId } = await params;
     const { searchParams } = new URL(request.url);
 
     // Verify case exists and user has access
@@ -182,7 +182,7 @@ export async function GET(
 // POST /api/cases/[id]/documents - Upload document to specific case
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -190,7 +190,7 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const caseId = params.id;
+    const { id: caseId } = await params;
 
     // Verify case exists and user has access
     const case_ = await prisma.case.findUnique({

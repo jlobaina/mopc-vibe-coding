@@ -9,7 +9,7 @@ import { updateDepartmentSchema } from '@/lib/validators/department-validator';
 // GET /api/departments/[id] - Get specific department
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -18,7 +18,7 @@ export async function GET(
     }
 
     const department = await prisma.department.findUnique({
-      where: { id: params.id },
+      where: { id: (await params).id },
       include: {
         parent: {
           select: { id: true, name: true, code: true },
@@ -87,7 +87,7 @@ export async function GET(
 // PUT /api/departments/[id] - Update department
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -109,7 +109,7 @@ export async function PUT(
 
     // Check if department exists
     const existingDept = await prisma.department.findUnique({
-      where: { id: params.id },
+      where: { id: (await params).id },
     });
 
     if (!existingDept) {
@@ -148,7 +148,7 @@ export async function PUT(
         }
 
         // Prevent circular reference
-        if (validatedData.parentId === params.id) {
+        if (validatedData.parentId === (await params).id) {
           return NextResponse.json(
             { error: 'Un departamento no puede ser su propio padre' },
             { status: 400 }
@@ -156,7 +156,7 @@ export async function PUT(
         }
 
         // Prevent creating cycles in hierarchy
-        const isDescendant = await checkIsDescendant(validatedData.parentId, params.id);
+        const isDescendant = await checkIsDescendant(validatedData.parentId, (await params).id);
         if (isDescendant) {
           return NextResponse.json(
             { error: 'No se puede establecer un departamento hijo como padre' },
@@ -182,7 +182,7 @@ export async function PUT(
 
     // Update department
     const department = await prisma.department.update({
-      where: { id: params.id },
+      where: { id: (await params).id },
       data: validatedData,
       include: {
         parent: {
@@ -248,7 +248,7 @@ export async function PUT(
 // DELETE /api/departments/[id] - Delete department
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -267,7 +267,7 @@ export async function DELETE(
 
     // Check if department exists
     const department = await prisma.department.findUnique({
-      where: { id: params.id },
+      where: { id: (await params).id },
       include: {
         _count: {
           select: {
@@ -314,7 +314,7 @@ export async function DELETE(
 
     // Delete department
     await prisma.department.delete({
-      where: { id: params.id },
+      where: { id: (await params).id },
     });
 
     // Log activity
@@ -322,7 +322,7 @@ export async function DELETE(
       userId: session.user.id,
       action: 'DELETED',
       entityType: 'department',
-      entityId: params.id,
+      entityId: (await params).id,
       description: `Departamento eliminado: ${department.name}`,
       metadata: {
         departmentName: department.name,

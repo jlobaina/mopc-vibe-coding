@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { key: string } }
+  { params }: { params: Promise<{ key: string }> }
 ) {
   try {
     const session = await auth()
@@ -24,7 +24,7 @@ export async function GET(
     // Find the configuration first
     const config = await prisma.systemConfiguration.findFirst({
       where: {
-        key: params.key
+        key: (await params).key
       }
     })
 

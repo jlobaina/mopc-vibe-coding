@@ -11,7 +11,7 @@ const updateConfigSchema = z.object({
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { key: string } }
+  { params }: { params: Promise<{ key: string }> }
 ) {
   try {
     const session = await auth()
@@ -26,7 +26,7 @@ export async function GET(
 
     const config = await prisma.systemConfiguration.findFirst({
       where: {
-        key: params.key
+        key: (await params).key
       },
       include: {
         creator: {
@@ -65,7 +65,7 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { key: string } }
+  { params }: { params: Promise<{ key: string }> }
 ) {
   try {
     const session = await auth()
@@ -83,7 +83,7 @@ export async function PUT(
 
     const existingConfig = await prisma.systemConfiguration.findFirst({
       where: {
-        key: params.key
+        key: (await params).key
       }
     })
 
@@ -162,7 +162,7 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { key: string } }
+  { params }: { params: Promise<{ key: string }> }
 ) {
   try {
     const session = await auth()
@@ -177,7 +177,7 @@ export async function DELETE(
 
     const existingConfig = await prisma.systemConfiguration.findFirst({
       where: {
-        key: params.key
+        key: (await params).key
       }
     })
 

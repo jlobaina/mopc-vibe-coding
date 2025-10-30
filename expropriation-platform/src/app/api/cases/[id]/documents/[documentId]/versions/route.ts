@@ -19,7 +19,7 @@ const createVersionSchema = z.object({
 // GET /api/cases/[id]/documents/[documentId]/versions - Get document versions
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string; documentId: string } }
+  { params }: { params: Promise<{ id: string; documentId: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -27,7 +27,7 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { id: caseId, documentId } = params;
+    const { id: caseId, documentId } = await params;
 
     // Verify case and document exist and user has access
     const [case_, document] = await Promise.all([
@@ -151,7 +151,7 @@ export async function GET(
 // POST /api/cases/[id]/documents/[documentId]/versions - Create new version
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string; documentId: string } }
+  { params }: { params: Promise<{ id: string; documentId: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -159,7 +159,7 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { id: caseId, documentId } = params;
+    const { id: caseId, documentId } = await params;
 
     // Parse form data (file upload) or JSON (metadata update)
     const contentType = request.headers.get('content-type');

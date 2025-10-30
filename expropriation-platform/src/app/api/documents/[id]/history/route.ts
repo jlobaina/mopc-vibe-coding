@@ -21,7 +21,7 @@ const queryHistorySchema = z.object({
 // GET /api/documents/[id]/history - Get document history/audit trail
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -29,7 +29,7 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { id } = params;
+    const { id } = await params;
     const { searchParams } = new URL(request.url);
     const query = queryHistorySchema.parse(Object.fromEntries(searchParams));
 
@@ -159,7 +159,7 @@ export async function GET(
 // POST /api/documents/[id]/history/export - Export document history
 export async function POST_EXPORT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -167,7 +167,7 @@ export async function POST_EXPORT(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { id } = params;
+    const { id } = await params;
     const body = await request.json();
     const { format = 'json', includeDetails = true, filters = {} } = body;
 

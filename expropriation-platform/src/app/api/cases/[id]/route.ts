@@ -8,7 +8,7 @@ import { UpdateCaseSchema, CaseStatusUpdateSchema, CaseStageUpdateSchema, CaseAs
 // GET /api/cases/[id] - Get a specific case
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -16,7 +16,7 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const caseId = params.id
+    const { id: caseId } = await params
 
     // Get user to check permissions
     const user = await prisma.user.findUnique({
@@ -180,7 +180,7 @@ export async function GET(
 // PUT /api/cases/[id] - Update a case
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -188,7 +188,7 @@ export async function PUT(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const caseId = params.id
+    const { id: caseId } = await params
     const body = await request.json()
     const validationResult = UpdateCaseSchema.safeParse(body)
 
@@ -383,7 +383,7 @@ export async function PUT(
 // DELETE /api/cases/[id] - Soft delete a case
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -391,7 +391,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const caseId = params.id
+    const { id: caseId } = await params
 
     // Get user to check permissions
     const user = await prisma.user.findUnique({

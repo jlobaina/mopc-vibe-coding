@@ -14,7 +14,7 @@ const stageAssignmentSchema = z.object({
 // GET /api/departments/[id]/stages - Get department stage assignments
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -24,7 +24,7 @@ export async function GET(
 
     // Check if department exists
     const department = await prisma.department.findUnique({
-      where: { id: params.id },
+      where: { id: (await params).id },
       select: { id: true, name: true, code: true },
     });
 
@@ -38,7 +38,7 @@ export async function GET(
     // Get current stage assignments
     const assignments = await prisma.departmentStageAssignment.findMany({
       where: {
-        departmentId: params.id,
+        departmentId: (await params).id,
         isActive: true,
       },
       include: {
@@ -57,7 +57,7 @@ export async function GET(
       allStages.map(async (stage) => {
         const count = await prisma.case.count({
           where: {
-            departmentId: params.id,
+            departmentId: (await params).id,
             currentStage: stage,
           },
         });
@@ -93,7 +93,7 @@ export async function GET(
 // POST /api/departments/[id]/stages - Assign stages to department
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -115,7 +115,7 @@ export async function POST(
 
     // Check if department exists
     const department = await prisma.department.findUnique({
-      where: { id: params.id },
+      where: { id: (await params).id },
       select: { id: true, name: true, code: true },
     });
 
@@ -129,7 +129,7 @@ export async function POST(
     // Deactivate existing assignments
     await prisma.departmentStageAssignment.updateMany({
       where: {
-        departmentId: params.id,
+        departmentId: (await params).id,
         isActive: true,
       },
       data: {
@@ -142,7 +142,7 @@ export async function POST(
       stages.map(stage =>
         prisma.departmentStageAssignment.create({
           data: {
-            departmentId: params.id,
+            departmentId: (await params).id,
             stage,
             assignedBy: session.user.id,
           },
@@ -155,7 +155,7 @@ export async function POST(
       userId: session.user.id,
       action: 'UPDATED',
       entityType: 'department',
-      entityId: params.id,
+      entityId: (await params).id,
       description: `Etapas asignadas al departamento: ${department.name}`,
       metadata: {
         departmentName: department.name,
@@ -163,7 +163,7 @@ export async function POST(
         assignedStages: stages,
         previousAssignments: await prisma.departmentStageAssignment.findMany({
           where: {
-            departmentId: params.id,
+            departmentId: (await params).id,
             isActive: false,
           },
           select: { stage: true, assignedAt: true },
@@ -198,7 +198,7 @@ export async function POST(
 // PUT /api/departments/[id]/stages/[stage] - Update specific stage assignment
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string; stage: string } }
+  { params }: { params: Promise<{ id: string; stage: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -206,8 +206,8 @@ export async function PUT(
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
 
-    const departmentId = params.id;
-    const stage = params.stage as CaseStage;
+    const departmentId = (await params).id;
+    const stage = (await params).stage as CaseStage;
 
     // Validate stage
     if (!Object.values(CaseStage).includes(stage)) {
@@ -325,7 +325,7 @@ export async function PUT(
 // DELETE /api/departments/[id]/stages/[stage] - Remove stage assignment
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string; stage: string } }
+  { params }: { params: Promise<{ id: string; stage: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -333,8 +333,8 @@ export async function DELETE(
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
 
-    const departmentId = params.id;
-    const stage = params.stage as CaseStage;
+    const departmentId = (await params).id;
+    const stage = (await params).stage as CaseStage;
 
     // Validate stage
     if (!Object.values(CaseStage).includes(stage)) {

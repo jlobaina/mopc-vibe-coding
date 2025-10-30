@@ -7,7 +7,7 @@ import { logActivity } from '@/lib/activity-logger';
 // DELETE /api/users/[id]/departments/[assignmentId] - Remove department assignment
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string; assignmentId: string } }
+  { params }: { params: Promise<{ id: string; assignmentId: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -15,7 +15,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
 
-    const { id, assignmentId } = params;
+    const { id, assignmentId } = await params;
 
     // Check permissions
     const currentUser = await prisma.user.findUnique({
@@ -110,7 +110,7 @@ export async function DELETE(
 // PUT /api/users/[id]/departments/[assignmentId]/primary - Set as primary department
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string; assignmentId: string } }
+  { params }: { params: Promise<{ id: string; assignmentId: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -118,7 +118,7 @@ export async function PUT(
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
 
-    const { id, assignmentId } = params;
+    const { id, assignmentId } = await params;
 
     // Check permissions
     const currentUser = await prisma.user.findUnique({

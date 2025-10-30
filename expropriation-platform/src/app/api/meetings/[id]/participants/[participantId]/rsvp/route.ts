@@ -7,7 +7,7 @@ import { z } from "zod";
 // POST /api/meetings/[id]/participants/[participantId]/rsvp - RSVP to meeting
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string; participantId: string } }
+  { params }: { params: Promise<{ id: string; participantId: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -28,7 +28,7 @@ export async function POST(
     // Get meeting and participant
     const [meeting, participant] = await Promise.all([
       prisma.meeting.findUnique({
-        where: { id: params.id },
+        where: { id: (await params).id },
         include: {
           organizer: {
             select: { id: true, firstName: true, lastName: true, email: true },
@@ -39,7 +39,7 @@ export async function POST(
         },
       }),
       prisma.meetingParticipant.findUnique({
-        where: { id: params.participantId },
+        where: { id: (await params).participantId },
         include: {
           user: {
             select: { id: true, firstName: true, lastName: true, email: true },
@@ -96,7 +96,7 @@ export async function POST(
 
     // Update participant RSVP
     const updatedParticipant = await prisma.meetingParticipant.update({
-      where: { id: params.participantId },
+      where: { id: (await params).participantId },
       data: {
         rsvpStatus: validatedData.status,
         rsvpAt: new Date(),
@@ -128,7 +128,7 @@ export async function POST(
 
     if (Object.keys(countUpdate).length > 0) {
       await prisma.meeting.update({
-        where: { id: params.id },
+        where: { id: (await params).id },
         data: countUpdate,
       });
     }
@@ -142,7 +142,7 @@ export async function POST(
         description: `${participant.user?.firstName || participant.name} ${participant.user?.lastName || ""} RSVP ${validatedData.status.toLowerCase()} to meeting: ${meeting.title}`,
         userId: session.user.id,
         metadata: {
-          meetingId: params.id,
+          meetingId: (await params).id,
           rsvpStatus: validatedData.status,
           rsvpNotes: validatedData.notes,
         },
@@ -200,7 +200,7 @@ export async function POST(
       notifications.map((notification) =>
         prisma.meetingNotification.create({
           data: {
-            meetingId: params.id,
+            meetingId: (await params).id,
             recipientId: notification.recipientId,
             type: "UPDATE",
             title: notification.title,

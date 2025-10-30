@@ -14,7 +14,7 @@ const updateApprovalSchema = z.object({
 // GET /api/approvals/workflows/[id]/approvals - Get workflow approvals
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getSession();
@@ -24,7 +24,7 @@ export async function GET(
 
     // Check if workflow exists and user has access
     const workflow = await prisma.approvalWorkflow.findUnique({
-      where: { id: params.id },
+      where: { id: (await params).id },
       include: {
         approvals: {
           include: {
@@ -79,7 +79,7 @@ export async function GET(
 // POST /api/approvals/workflows/[id]/approvals - Submit approval decision
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getSession();
@@ -92,7 +92,7 @@ export async function POST(
 
     // Check if workflow exists and is pending
     const workflow = await prisma.approvalWorkflow.findUnique({
-      where: { id: params.id },
+      where: { id: (await params).id },
       include: {
         approvals: true,
         case: true,
@@ -117,7 +117,7 @@ export async function POST(
     let approval = await prisma.approval.findUnique({
       where: {
         workflowId_userId: {
-          workflowId: params.id,
+          workflowId: (await params).id,
           userId: session.user.id,
         },
       },
@@ -161,7 +161,7 @@ export async function POST(
 
     // Check if workflow can be completed
     const allApprovals = await prisma.approval.findMany({
-      where: { workflowId: params.id },
+      where: { workflowId: (await params).id },
     });
 
     const approvedCount = allApprovals.filter(a => a.decision === ApprovalStatus.APPROVED).length;
@@ -187,7 +187,7 @@ export async function POST(
     // Update workflow status if changed
     if (workflowStatus !== workflow.status) {
       await prisma.approvalWorkflow.update({
-        where: { id: params.id },
+        where: { id: (await params).id },
         data: {
           status: workflowStatus,
           completedAt,
