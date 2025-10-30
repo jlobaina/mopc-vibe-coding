@@ -328,7 +328,25 @@ export async function POST(request: NextRequest) {
       data: {
         ...caseData,
         createdById: user.id,
-        startDate: new Date()
+        startDate: new Date(),
+        // Convert undefined to null for optional fields that Prisma expects as nullable
+        description: caseData.description ?? null,
+        propertyDescription: caseData.propertyDescription ?? null,
+        propertyCoordinates: caseData.propertyCoordinates ?? null,
+        propertyArea: caseData.propertyArea ?? null,
+        propertyType: caseData.propertyType ?? null,
+        ownerIdentification: caseData.ownerIdentification ?? null,
+        ownerContact: caseData.ownerContact ?? null,
+        ownerEmail: caseData.ownerEmail ?? null,
+        ownerAddress: caseData.ownerAddress ?? null,
+        ownerType: caseData.ownerType ?? null,
+        estimatedValue: caseData.estimatedValue ?? null,
+        expropriationDecree: caseData.expropriationDecree ?? null,
+        judicialCaseNumber: caseData.judicialCaseNumber ?? null,
+        legalStatus: caseData.legalStatus ?? null,
+        assignedToId: caseData.assignedToId ?? null,
+        supervisedById: caseData.supervisedById ?? null,
+        expectedEndDate: caseData.expectedEndDate ?? null
       },
       include: {
         department: {

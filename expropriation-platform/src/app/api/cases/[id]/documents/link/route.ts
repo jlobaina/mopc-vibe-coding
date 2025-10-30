@@ -64,38 +64,25 @@ export async function POST(
     }
 
     // Check if document is already linked to this case
-    const existingLink = await prisma.caseDocument.findUnique({
-      where: {
-        caseId_documentId: {
-          caseId,
-          documentId
-        }
-      }
-    })
-
-    if (existingLink) {
+    if (existingDocument.caseId === caseId) {
       return NextResponse.json(
         { error: 'Document is already linked to this case' },
         { status: 409 }
       )
     }
 
-    // Create the link between case and document
-    const caseDocument = await prisma.caseDocument.create({
+    // Link the document to the case by updating the document
+    const updatedDocument = await prisma.document.update({
+      where: { id: documentId },
       data: {
-        caseId,
-        documentId,
-        linkedById: user.id,
-        linkedAt: new Date()
+        caseId: caseId
       },
       include: {
-        document: {
+        case: {
           select: {
             id: true,
-            title: true,
-            fileName: true,
-            documentType: true,
-            securityLevel: true
+            fileNumber: true,
+            title: true
           }
         }
       }
@@ -105,8 +92,8 @@ export async function POST(
     await logActivity({
       userId: user.id,
       action: 'LINKED',
-      entityType: 'case_document',
-      entityId: caseDocument.id,
+      entityType: 'document',
+      entityId: updatedDocument.id,
       description: `Linked document "${existingDocument.title}" to case ${existingCase.fileNumber}`,
       metadata: {
         caseId,
@@ -118,12 +105,12 @@ export async function POST(
 
     return NextResponse.json({
       message: 'Document linked successfully',
-      caseDocument
+      document: updatedDocument
     })
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Invalid input', details: error.errors },
+        { error: 'Invalid input', details: error.issues },
         { status: 400 }
       )
     }

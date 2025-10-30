@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
+import { DocumentFormData } from '@/types/client';
 
 // Validation schemas
 const createCaseDocumentSchema = z.object({
@@ -18,8 +19,8 @@ const createCaseDocumentSchema = z.object({
   ]),
   securityLevel: z.enum(['PUBLIC', 'INTERNAL', 'CONFIDENTIAL', 'RESTRICTED']).default('INTERNAL'),
   tags: z.string().optional(),
-  metadata: z.record(z.any()).optional(),
-  customFields: z.record(z.any()).optional(),
+  metadata: z.record(z.string(), z.any()).optional(),
+  customFields: z.record(z.string(), z.any()).optional(),
   retentionPeriod: z.number().optional(),
   expiresAt: z.string().datetime().optional(),
   stageSpecific: z.boolean().default(false),
@@ -223,33 +224,61 @@ export async function POST(
     // Parse form data
     const formData = await request.formData();
     const file = formData.get('file') as File;
-    const documentData = JSON.parse(formData.get('documentData') as string);
+    const rawDocumentData = JSON.parse(formData.get('documentData') as string);
 
     if (!file) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });
     }
 
     // Validate document data
-    const validatedData = createCaseDocumentSchema.parse(documentData);
+    const validatedData = createCaseDocumentSchema.parse(rawDocumentData);
 
     // Import document creation logic
     const { createDocumentWithFile } = await import('@/lib/documents');
 
+    // Build document data object to handle exactOptionalPropertyTypes
+    const documentData: Partial<DocumentFormData> = {
+      title: validatedData.title,
+      documentType: validatedData.documentType,
+      category: validatedData.category,
+      securityLevel: validatedData.securityLevel,
+      caseId,
+    };
+
+    // Only include optional fields if they exist
+    if (validatedData.description !== undefined) {
+      documentData.description = validatedData.description;
+    }
+    if (validatedData.tags !== undefined) {
+      documentData.tags = validatedData.tags;
+    }
+    if (validatedData.retentionPeriod !== undefined) {
+      documentData.retentionPeriod = validatedData.retentionPeriod;
+    }
+    if (validatedData.expiresAt !== undefined) {
+      documentData.expiresAt = validatedData.expiresAt;
+    }
+
+    // Handle metadata
+    const baseMetadata = validatedData.metadata || {};
+    documentData.metadata = {
+      ...baseMetadata,
+      uploadedAtStage: case_.currentStage,
+      caseFileNumber: (await prisma.case.findUnique({
+        where: { id: caseId },
+        select: { fileNumber: true }
+      }))?.fileNumber,
+    };
+
+    // Handle custom fields
+    if (validatedData.customFields !== undefined) {
+      documentData.customFields = validatedData.customFields;
+    }
+
     // Create document with case association
     const document = await createDocumentWithFile({
       file,
-      documentData: {
-        ...validatedData,
-        caseId,
-        metadata: {
-          ...validatedData.metadata,
-          uploadedAtStage: case_.currentStage,
-          caseFileNumber: (await prisma.case.findUnique({
-            where: { id: caseId },
-            select: { fileNumber: true }
-          }))?.fileNumber,
-        },
-      },
+      documentData,
       userId: session.user.id,
     });
 
@@ -288,7 +317,7 @@ async function hasDepartmentAccess(userId: string, departmentId: string): Promis
     select: {
       departmentId: true,
       role: {
-        select: { permissions: true }
+        select: { name: true }
       }
     },
   });
@@ -297,9 +326,8 @@ async function hasDepartmentAccess(userId: string, departmentId: string): Promis
 
   // Check if user is in the same department or has admin permissions
   const sameDepartment = user.departmentId === departmentId;
-  const hasAdminAccess = user.role?.permissions?.admin ||
-                        user.role?.permissions?.allDepartments ||
-                        user.role?.permissions?.viewAllCases;
+  const hasAdminAccess = user.role?.name === 'super_admin' ||
+                        user.role?.name === 'department_admin';
 
   return sameDepartment || hasAdminAccess;
 }

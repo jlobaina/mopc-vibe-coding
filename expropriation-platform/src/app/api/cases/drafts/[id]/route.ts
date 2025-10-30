@@ -68,7 +68,7 @@ export async function PUT(
 
       if (!validationResult.success) {
         return NextResponse.json(
-          { error: 'Invalid data for complete case', details: validationResult.error.errors },
+          { error: 'Invalid data for complete case', details: validationResult.error.issues },
           { status: 400 }
         )
       }
@@ -95,7 +95,25 @@ export async function PUT(
         data: {
           ...completeCaseData,
           isDraft: false,
-          startDate: existingDraft.startDate || new Date()
+          startDate: existingDraft.startDate || new Date(),
+          // Handle optional fields that can be null
+          description: completeCaseData.description ?? null,
+          propertyDescription: completeCaseData.propertyDescription ?? null,
+          propertyCoordinates: completeCaseData.propertyCoordinates ?? null,
+          propertyArea: completeCaseData.propertyArea ?? null,
+          propertyType: completeCaseData.propertyType ?? null,
+          ownerIdentification: completeCaseData.ownerIdentification ?? null,
+          ownerContact: completeCaseData.ownerContact ?? null,
+          ownerEmail: completeCaseData.ownerEmail ?? null,
+          ownerAddress: completeCaseData.ownerAddress ?? null,
+          ownerType: completeCaseData.ownerType ?? null,
+          estimatedValue: completeCaseData.estimatedValue ?? null,
+          expropriationDecree: completeCaseData.expropriationDecree ?? null,
+          judicialCaseNumber: completeCaseData.judicialCaseNumber ?? null,
+          legalStatus: completeCaseData.legalStatus ?? null,
+          assignedToId: completeCaseData.assignedToId ?? null,
+          supervisedById: completeCaseData.supervisedById ?? null,
+          expectedEndDate: completeCaseData.expectedEndDate ?? null
         },
         include: {
           department: {
