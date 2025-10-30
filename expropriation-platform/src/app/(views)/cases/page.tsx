@@ -272,16 +272,13 @@ export default function CasesPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Número</TableHead>
+                    <TableHead>Prioridad</TableHead>
                     <TableHead>Título</TableHead>
-                    <TableHead>Propietario</TableHead>
                     <TableHead>Departamento</TableHead>
                     <TableHead>Asignado a</TableHead>
                     <TableHead>Estado</TableHead>
-                    <TableHead>Prioridad</TableHead>
                     <TableHead>Progreso</TableHead>
-                    <TableHead>Creación</TableHead>
-                    <TableHead>Acciones</TableHead>
+                    <TableHead>Fecha límite</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -291,8 +288,10 @@ export default function CasesPage() {
                       className={`cursor-pointer hover:bg-muted/50 ${case_.isDraft ? 'bg-gray-50/30' : ''}`}
                       onClick={() => router.push(`/cases/${case_.id}`)}
                     >
-                      <TableCell className="font-medium">
-                        {case_.fileNumber}
+                      <TableCell>
+                        <Badge className={getPriorityBadge(case_.priority).color}>
+                          {getPriorityBadge(case_.priority).label}
+                        </Badge>
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
@@ -322,7 +321,6 @@ export default function CasesPage() {
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell>{case_.ownerName}</TableCell>
                       <TableCell>
                         <Badge variant="outline">
                           {case_.department?.code}
@@ -345,11 +343,6 @@ export default function CasesPage() {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <Badge className={getPriorityBadge(case_.priority).color}>
-                          {getPriorityBadge(case_.priority).label}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
                         <div className="flex items-center gap-2">
                           <div className="w-full bg-secondary rounded-full h-2">
                             <div
@@ -363,19 +356,7 @@ export default function CasesPage() {
                         </div>
                       </TableCell>
                       <TableCell className="text-sm">
-                        {formatDate(case_.createdAt)}
-                      </TableCell>
-                      <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            router.push(`/cases/${case_.id}`)
-                          }}
-                        >
-                          Ver
-                        </Button>
+                        {case_.actualEndDate && formatDate(case_.actualEndDate) || <span className='text-muted-foreground'>No definida</span>}
                       </TableCell>
                     </TableRow>
                   ))}
