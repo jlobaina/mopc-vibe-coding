@@ -2,10 +2,31 @@ import { NextResponse } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 import type { NextRequest } from 'next/server';
 
+// Helper function to add security headers
+function addSecurityHeaders(response: NextResponse): NextResponse {
+  response.headers.set('X-Frame-Options', 'DENY');
+  response.headers.set('X-Content-Type-Options', 'nosniff');
+  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  response.headers.set('X-XSS-Protection', '1; mode=block');
+  response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  return response;
+}
+
 export default async function middleware(req: NextRequest) {
+  // Validate that NEXTAUTH_SECRET is set in production
+  if (process.env.NODE_ENV === 'production' && !process.env.NEXTAUTH_SECRET) {
+    console.error('CRITICAL: NEXTAUTH_SECRET is not set in production environment');
+    return new Response('Server configuration error', { status: 500 });
+  }
+
+  if (!process.env.NEXTAUTH_SECRET) {
+    console.error('WARNING: NEXTAUTH_SECRET is not configured');
+    return new Response('Server configuration error', { status: 500 });
+  }
+
   const token = await getToken({
     req,
-    secret: process.env.NEXTAUTH_SECRET || 'fallback-secret'
+    secret: process.env.NEXTAUTH_SECRET
   });
   const { pathname } = req.nextUrl;
 
@@ -18,16 +39,18 @@ export default async function middleware(req: NextRequest) {
       pathname.startsWith('/_next') ||
       pathname.startsWith('/favicon.ico') ||
       pathname.startsWith('/public')) {
-    return NextResponse.next();
+    return addSecurityHeaders(NextResponse.next());
   }
 
   // Check if user is authenticated and active
   if (!token || !token.isActive) {
     // Redirect to login for protected routes
     const loginUrl = new URL('/login', req.url);
-    // Only set callbackUrl for non-root paths to avoid encoding issues
+    // Only set callbackUrl for non-root paths and validate it's safe
     if (pathname !== '/') {
-      loginUrl.searchParams.set('callbackUrl', pathname);
+      // Validate that callbackUrl is a relative path to prevent open redirects
+      const safeCallbackUrl = pathname.startsWith('/') && !pathname.startsWith('//') ? pathname : '/';
+      loginUrl.searchParams.set('callbackUrl', safeCallbackUrl);
     }
     return NextResponse.redirect(loginUrl);
   }
@@ -41,6 +64,13 @@ export default async function middleware(req: NextRequest) {
 
   // Role-based access control for specific routes
   const userRole = token.role as string;
+
+  // Validate user role to prevent privilege escalation
+  const validRoles = ['super_admin', 'department_admin', 'analyst', 'supervisor', 'observer', 'technical_meeting_coordinator'];
+  if (!validRoles.includes(userRole)) {
+    console.error(`SECURITY: Invalid role "${userRole}" detected for user ${token.email || 'unknown'} from IP: ${req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown'}`);
+    return NextResponse.redirect(new URL('/login', req.url));
+  }
 
   // Super admin routes
   if (pathname.startsWith('/admin') && userRole !== 'super_admin') {
@@ -83,7 +113,7 @@ export default async function middleware(req: NextRequest) {
     }
   }
 
-  return NextResponse.next();
+  return addSecurityHeaders(NextResponse.next());
 }
 
 export const config = {
