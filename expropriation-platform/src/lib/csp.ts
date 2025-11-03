@@ -10,18 +10,29 @@ export function generateNonce(): string {
 
 // Generate CSP header with nonce
 export function generateCSPHeader(nonce: string): string {
-  return [
+  const isDevelopment = process.env.NODE_ENV === 'development';
+
+  const cspDirectives = [
     "default-src 'self'",
-    `script-src 'self' 'nonce-${nonce}'`,
-    `style-src 'self' 'nonce-${nonce}'`,
+    // In development, allow unsafe-eval for Next.js HMR
+    isDevelopment
+      ? `script-src 'self' 'nonce-${nonce}' 'unsafe-eval' 'unsafe-inline'`
+      : `script-src 'self' 'nonce-${nonce}'`,
+    `style-src 'self' 'nonce-${nonce}' ${isDevelopment ? "'unsafe-inline'" : ''}`,
     "img-src 'self' data: https:",
     "font-src 'self'",
-    "connect-src 'self'",
+    // Allow WebSocket connections in development for HMR
+    isDevelopment
+      ? "connect-src 'self' ws: wss:"
+      : "connect-src 'self'",
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'",
-    "upgrade-insecure-requests",
-  ].join('; ');
+    // Only upgrade in production
+    ...(isDevelopment ? [] : ["upgrade-insecure-requests"]),
+  ];
+
+  return cspDirectives.join('; ');
 }
 
 // Security headers configuration
