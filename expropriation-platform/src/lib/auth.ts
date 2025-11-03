@@ -5,9 +5,20 @@ import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { logUserLogin, logFailedLogin } from '@/lib/activity-logger';
+import { loggers } from '@/lib/logger';
+import { randomBytes } from 'crypto';
+
+// Validate required environment variables
+if (!process.env.NEXTAUTH_SECRET) {
+  loggers.security.configurationIssue('NEXTAUTH_SECRET not set during auth initialization', {
+    environment: process.env.NODE_ENV,
+    timestamp: new Date().toISOString(),
+  });
+  throw new Error('NEXTAUTH_SECRET is not set in environment variables');
+}
 
 const credentialsSchema = z.object({
-  email: z.string().email('Correo electrónico inválido'),
+  email: z.email('Correo electrónico inválido'),
   password: z.string().min(1, 'La contraseña es requerida'),
 });
 
@@ -32,8 +43,8 @@ export const authOptions: NextAuthOptions = {
         }
 
         const { email, password } = validatedCredentials.data;
-        const ipAddress = req.headers['x-forwarded-for'] as string || req.ip;
-        const userAgent = req.headers['user-agent'];
+        const ipAddress = req.headers?.['x-forwarded-for'] as string || req.headers?.['x-real-ip'] as string || 'unknown';
+        const userAgent = req.headers?.['user-agent'];
 
         // Find user with all necessary relations
         const user = await prisma.user.findUnique({
@@ -47,32 +58,81 @@ export const authOptions: NextAuthOptions = {
         if (!user) {
           // Log failed login for non-existent user
           await logFailedLogin(email, ipAddress, userAgent);
+          loggers.security.loginAttempt(email, ipAddress, false);
           return null;
         }
 
         // Check if user is active and not suspended
         if (!user.isActive || user.isSuspended) {
           await logFailedLogin(email, ipAddress, userAgent);
+          loggers.security.loginAttempt(email, ipAddress, false, user.id);
+          loggers.security.suspiciousActivity('login_attempt_on_inactive_account', {
+            email,
+            userId: user.id,
+            isActive: user.isActive,
+            isSuspended: user.isSuspended,
+            ipAddress,
+            userAgent,
+            timestamp: new Date().toISOString(),
+          });
           return null;
         }
 
         // Check if account is locked due to failed attempts
         if (user.lockedUntil && user.lockedUntil > new Date()) {
+          // Log attempt on locked account
+          await logFailedLogin(email, ipAddress, userAgent);
+          loggers.security.suspiciousActivity('login_attempt_on_locked_account', {
+            email,
+            userId: user.id,
+            ipAddress,
+            userAgent,
+            lockedUntil: user.lockedUntil.toISOString(),
+            timestamp: new Date().toISOString(),
+          });
           return null;
         }
 
         // Verify password
         const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
         if (!isPasswordValid) {
-          // Log failed login
+          // Update failed login attempts with exponential backoff
+          const newFailedAttempts = (user.failedLoginAttempts || 0) + 1;
+          const shouldLockAccount = newFailedAttempts >= 5;
+          const lockoutDuration = shouldLockAccount ? Math.pow(2, Math.min(newFailedAttempts - 4, 6)) * 60 * 1000 : 0; // Max 64 minutes
+
+          await prisma.user.update({
+            where: { id: user.id },
+            data: {
+              failedLoginAttempts: newFailedAttempts,
+              lockedUntil: shouldLockAccount ? new Date(Date.now() + lockoutDuration) : null
+            }
+          });
+
+          // Log failed login with security context
           await logFailedLogin(email, ipAddress, userAgent);
+          loggers.security.loginAttempt(email, ipAddress, false, user.id);
+
+          if (shouldLockAccount) {
+            loggers.security.suspiciousActivity('account_locked_due_to_failed_attempts', {
+              email,
+              userId: user.id,
+              ipAddress,
+              userAgent,
+              failedAttempts: newFailedAttempts,
+              lockoutDurationMinutes: Math.round(lockoutDuration / 60000),
+              lockedUntil: new Date(Date.now() + lockoutDuration).toISOString(),
+              timestamp: new Date().toISOString(),
+            });
+          }
+
           return null;
         }
 
         // Check if user must change password
         if (user.mustChangePassword) {
           // Return user but with a flag to force password change
-          const userData = {
+          const userData: any = {
             id: user.id,
             email: user.email,
             name: `${user.firstName} ${user.lastName}`,
@@ -85,19 +145,40 @@ export const authOptions: NextAuthOptions = {
             roleId: user.roleId,
             permissions: user.role.permissions as Record<string, boolean>,
             isActive: user.isActive,
-            phone: user.phone,
-            avatar: user.avatar,
             mustChangePassword: true,
           };
+
+          // Only include optional properties if they have values
+          if (user.phone) {
+            userData.phone = user.phone;
+          }
+          if (user.avatar) {
+            userData.avatar = user.avatar;
+          }
 
           return userData;
         }
 
-        // Log successful login and update user info
+        // Reset failed login attempts on successful login and update user info
+        await prisma.user.update({
+          where: { id: user.id },
+          data: {
+            failedLoginAttempts: 0,
+            lockedUntil: null,
+            lastLoginAt: new Date(),
+            lastLoginIp: ipAddress,
+            lastLoginUserAgent: userAgent,
+            loginCount: { increment: 1 }
+          }
+        });
+
         await logUserLogin(user.id, ipAddress, userAgent);
 
-        // Create user session record
-        const sessionToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+        // Log successful login with security context
+        loggers.security.loginAttempt(email, ipAddress, true, user.id);
+
+        // Create user session record with cryptographically secure token
+        const sessionToken = randomBytes(32).toString('hex');
         await prisma.userSession.create({
           data: {
             userId: user.id,
@@ -114,7 +195,7 @@ export const authOptions: NextAuthOptions = {
         });
 
         // Return user data in the format expected by NextAuth
-        return {
+        const userData: any = {
           id: user.id,
           email: user.email,
           name: `${user.firstName} ${user.lastName}`,
@@ -127,10 +208,18 @@ export const authOptions: NextAuthOptions = {
           roleId: user.roleId,
           permissions: user.role.permissions as Record<string, boolean>,
           isActive: user.isActive,
-          phone: user.phone,
-          avatar: user.avatar,
           sessionToken,
         };
+
+        // Only include optional properties if they have values
+        if (user.phone) {
+          userData.phone = user.phone;
+        }
+        if (user.avatar) {
+          userData.avatar = user.avatar;
+        }
+
+        return userData;
       },
     }),
   ],
@@ -156,8 +245,20 @@ export const authOptions: NextAuthOptions = {
         token.roleId = user.roleId;
         token.permissions = user.permissions;
         token.isActive = user.isActive;
-        token.phone = user.phone;
-        token.avatar = user.avatar;
+
+        // Only assign optional properties if they have values
+        if (user.phone) {
+          token.phone = user.phone;
+        }
+        if (user.avatar) {
+          token.avatar = user.avatar;
+        }
+        if (user.mustChangePassword !== undefined) {
+          token.mustChangePassword = user.mustChangePassword;
+        }
+        if (user.sessionToken) {
+          token.sessionToken = user.sessionToken;
+        }
       }
 
       // Handle session updates (e.g., when role changes)
@@ -181,6 +282,8 @@ export const authOptions: NextAuthOptions = {
         session.user.isActive = token.isActive as boolean;
         session.user.phone = token.phone as string;
         session.user.avatar = token.avatar as string;
+        session.user.mustChangePassword = token.mustChangePassword as boolean;
+        session.user.sessionToken = token.sessionToken as string;
       }
       return session;
     },
