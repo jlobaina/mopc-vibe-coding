@@ -1,13 +1,12 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
+import { headers } from "next/headers";
 import { AuthProvider } from "@/components/providers/auth-provider";
 import { ThemeProvider } from "@/components/theme/theme-provider";
 import { TutorialProvider } from "@/components/tutorial/tutorial-provider";
 import { EnhancedToastProvider } from "@/components/notifications/enhanced-toast-provider";
 import { KeyboardShortcutsProvider } from "@/components/navigation/enhanced-keyboard-shortcuts";
-import { SkipLink } from "@/components/ui/skip-link";
 import { SkipLink as AccessibleSkipLink } from "@/components/ui/accessibility";
-import { PerformanceMonitor } from "@/components/performance/performance-monitor";
 import { PerformanceMonitor as PerfMonitor } from "@/lib/performance";
 import { TutorialOverlay } from "@/components/tutorial/tutorial-overlay";
 import { QuickAccessButton } from "@/components/navigation/enhanced-keyboard-shortcuts";
@@ -39,13 +38,21 @@ export const viewport: Viewport = {
   colorScheme: "light dark",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Get the nonce from the headers set by middleware
+  const headersList = await headers();
+  const nonce = headersList.get('x-nonce');
+
   return (
     <html lang="es" suppressHydrationWarning>
+      <head>
+        {/* Add nonce as meta tag for client components */}
+        {nonce && <meta name="csp-nonce" content={nonce} />}
+      </head>
       <body className={inter.className}>
         <ThemeProvider
           defaultTheme="system"

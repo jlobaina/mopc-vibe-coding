@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 import type { NextRequest } from 'next/server';
 import { edgeLogger } from '@/lib/edge-logger';
+import { generateNonce, generateCSPHeader, SECURITY_HEADERS } from '@/lib/csp';
 
 // Helper function to get client IP
 function getClientIP(req: NextRequest): string {
@@ -17,17 +18,25 @@ function getClientIP(req: NextRequest): string {
   return 'unknown';
 }
 
-// Helper function to add security headers
-function addSecurityHeaders(response: NextResponse): NextResponse {
-  response.headers.set('X-Frame-Options', 'DENY');
-  response.headers.set('X-Content-Type-Options', 'nosniff');
-  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
-  response.headers.set('X-XSS-Protection', '1; mode=block');
-  response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+// Helper function to add security headers with CSP nonce
+function addSecurityHeaders(response: NextResponse, nonce: string): NextResponse {
+  // Add CSP header with nonce
+  response.headers.set('Content-Security-Policy', generateCSPHeader(nonce));
+
+  // Add other security headers
+  Object.entries(SECURITY_HEADERS).forEach(([key, value]) => {
+    if (key !== 'Content-Security-Policy' && value) {
+      response.headers.set(key, value);
+    }
+  });
+
   return response;
 }
 
 export default async function middleware(req: NextRequest) {
+  // Generate a nonce for this request
+  const nonce = generateNonce();
+
   // Validate that NEXTAUTH_SECRET is set in production
   if (process.env.NODE_ENV === 'production' && !process.env.NEXTAUTH_SECRET) {
     edgeLogger.security.configurationIssue('NEXTAUTH_SECRET not set in production', {
@@ -62,7 +71,9 @@ export default async function middleware(req: NextRequest) {
       pathname.startsWith('/_next') ||
       pathname.startsWith('/favicon.ico') ||
       pathname.startsWith('/public')) {
-    return addSecurityHeaders(NextResponse.next());
+    const response = addSecurityHeaders(NextResponse.next(), nonce);
+    response.headers.set('x-nonce', nonce);
+    return response;
   }
 
   // Check if user is authenticated and active
@@ -75,14 +86,16 @@ export default async function middleware(req: NextRequest) {
       const safeCallbackUrl = pathname.startsWith('/') && !pathname.startsWith('//') ? pathname : '/';
       loginUrl.searchParams.set('callbackUrl', safeCallbackUrl);
     }
-    return NextResponse.redirect(loginUrl);
+    const response = NextResponse.redirect(loginUrl);
+    return addSecurityHeaders(response, nonce);
   }
 
   // Redirect authenticated users away from auth pages
   if (pathname.startsWith('/login') ||
       pathname.startsWith('/forgot-password') ||
       pathname.startsWith('/reset-password')) {
-    return NextResponse.redirect(new URL('/dashboard', req.url));
+    const response = NextResponse.redirect(new URL('/dashboard', req.url));
+    return addSecurityHeaders(response, nonce);
   }
 
   // Role-based access control for specific routes
@@ -101,7 +114,8 @@ export default async function middleware(req: NextRequest) {
       attemptedPath: pathname,
       timestamp: new Date().toISOString(),
     });
-    return NextResponse.redirect(new URL('/login', req.url));
+    const response = NextResponse.redirect(new URL('/login', req.url));
+    return addSecurityHeaders(response, nonce);
   }
 
   // Super admin routes
@@ -114,7 +128,8 @@ export default async function middleware(req: NextRequest) {
       ip: getClientIP(req),
       userAgent: req.headers.get('user-agent') || 'unknown',
     });
-    return NextResponse.redirect(new URL('/dashboard', req.url));
+    const response = NextResponse.redirect(new URL('/dashboard', req.url));
+    return addSecurityHeaders(response, nonce);
   }
 
   // Department management routes
@@ -128,7 +143,8 @@ export default async function middleware(req: NextRequest) {
       ip: getClientIP(req),
       userAgent: req.headers.get('user-agent') || 'unknown',
     });
-    return NextResponse.redirect(new URL('/dashboard', req.url));
+    const response = NextResponse.redirect(new URL('/dashboard', req.url));
+    return addSecurityHeaders(response, nonce);
   }
 
   // User management routes
@@ -142,7 +158,8 @@ export default async function middleware(req: NextRequest) {
       ip: getClientIP(req),
       userAgent: req.headers.get('user-agent') || 'unknown',
     });
-    return NextResponse.redirect(new URL('/dashboard', req.url));
+    const response = NextResponse.redirect(new URL('/dashboard', req.url));
+    return addSecurityHeaders(response, nonce);
   }
 
   // Meeting coordination routes
@@ -156,7 +173,8 @@ export default async function middleware(req: NextRequest) {
       ip: getClientIP(req),
       userAgent: req.headers.get('user-agent') || 'unknown',
     });
-    return NextResponse.redirect(new URL('/dashboard', req.url));
+    const response = NextResponse.redirect(new URL('/dashboard', req.url));
+    return addSecurityHeaders(response, nonce);
   }
 
   // Observer routes (read-only)
@@ -173,11 +191,14 @@ export default async function middleware(req: NextRequest) {
                      pathname === '/';
 
     if (!isAllowed && !pathname.startsWith('/api/auth')) {
-      return NextResponse.redirect(new URL('/dashboard', req.url));
+      const response = NextResponse.redirect(new URL('/dashboard', req.url));
+    return addSecurityHeaders(response, nonce);
     }
   }
 
-  return addSecurityHeaders(NextResponse.next());
+  const response = addSecurityHeaders(NextResponse.next(), nonce);
+  response.headers.set('x-nonce', nonce);
+  return response;
 }
 
 export const config = {

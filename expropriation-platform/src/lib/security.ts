@@ -1,5 +1,5 @@
-import crypto from 'crypto';
-import bcrypt from 'bcryptjs';
+import * as crypto from 'crypto';
+import * as bcrypt from 'bcryptjs';
 import { z } from 'zod';
 
 // Security constants
@@ -60,18 +60,26 @@ export const idSchema = z.object({
 
       // Calculate check digit
       const weights = [1, 2, 1, 2, 1, 2, 1, 2, 1, 2];
-      const digits = cleanId.split('').map(Number);
+      const digits = cleanId.split('').map(char => parseInt(char, 10));
       const checkDigit = digits[10];
 
       let sum = 0;
       for (let i = 0; i < 10; i++) {
-        let product = digits[i] * weights[i];
-        if (product > 9) product = product - 9;
-        sum += product;
+        const digit = digits[i];
+        const weight = weights[i];
+
+        // Ensure we have valid numbers
+        if (typeof digit === 'number' && !isNaN(digit) && typeof weight === 'number') {
+          let product = digit * weight;
+          if (product > 9) product = product - 9;
+          sum += product;
+        } else {
+          return false; // Invalid digit or weight
+        }
       }
 
       const calculatedCheckDigit = (10 - (sum % 10)) % 10;
-      return checkDigit === calculatedCheckDigit;
+      return typeof checkDigit === 'number' && !isNaN(checkDigit) && checkDigit === calculatedCheckDigit;
     }, 'La cédula no es válida'),
 });
 
@@ -219,25 +227,17 @@ export const rateLimiting = {
   },
 };
 
-// Security headers
+// Security headers (CSP is now handled in middleware with nonces)
 export const securityHeaders = {
-  'Content-Security-Policy': [
-    "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
-    "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: https:",
-    "font-src 'self'",
-    "connect-src 'self'",
-    "frame-ancestors 'none'",
-    "base-uri 'self'",
-    "form-action 'self'",
-  ].join('; '),
-
   'X-Frame-Options': 'DENY',
   'X-Content-Type-Options': 'nosniff',
   'Referrer-Policy': 'strict-origin-when-cross-origin',
   'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
-  'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
+  'X-XSS-Protection': '1; mode=block',
+  // HSTS is only added in production via middleware
+  'Strict-Transport-Security': process.env.NODE_ENV === 'production'
+    ? 'max-age=31536000; includeSubDomains; preload'
+    : undefined,
 };
 
 // Audit logging
@@ -288,10 +288,14 @@ export const encryption = {
   encrypt: (text: string, key: string): string => {
     const algorithm = 'aes-256-gcm';
     const iv = crypto.randomBytes(16);
-    const cipher = crypto.createCipher(algorithm, key);
+    // Create a proper 32-byte key from the input key
+    const keyBuffer = crypto.scryptSync(key, 'salt', 32);
+    const cipher = crypto.createCipheriv(algorithm, keyBuffer, iv);
 
-    let encrypted = cipher.update(text, 'utf8', 'hex');
-    encrypted += cipher.final('hex');
+    const encrypted = Buffer.concat([
+      cipher.update(text, 'utf8'),
+      cipher.final()
+    ]).toString('hex');
 
     const authTag = cipher.getAuthTag();
     return iv.toString('hex') + ':' + authTag.toString('hex') + ':' + encrypted;
@@ -300,15 +304,23 @@ export const encryption = {
   decrypt: (encryptedText: string, key: string): string => {
     const algorithm = 'aes-256-gcm';
     const parts = encryptedText.split(':');
-    const iv = Buffer.from(parts[0], 'hex');
-    const authTag = Buffer.from(parts[1], 'hex');
-    const encrypted = parts[2];
+    if (parts.length !== 3) {
+      throw new Error('Invalid encrypted text format');
+    }
 
-    const decipher = crypto.createDecipher(algorithm, key);
+    const iv = Buffer.from(parts[0] || '', 'hex');
+    const authTag = Buffer.from(parts[1] || '', 'hex');
+    const encrypted = parts[2] || '';
+
+    // Create a proper 32-byte key from the input key
+    const keyBuffer = crypto.scryptSync(key, 'salt', 32);
+    const decipher = crypto.createDecipheriv(algorithm, keyBuffer, iv);
     decipher.setAuthTag(authTag);
 
-    let decrypted = decipher.update(encrypted, 'hex', 'utf8');
-    decrypted += decipher.final('utf8');
+    const decrypted = Buffer.concat([
+      decipher.update(encrypted, 'hex'),
+      decipher.final()
+    ]).toString('utf8');
 
     return decrypted;
   },
@@ -370,7 +382,8 @@ export const secureRandom = {
     let result = '';
     const bytes = crypto.randomBytes(length);
     for (let i = 0; i < length; i++) {
-      result += charset[bytes[i] % charset.length];
+      const byteValue = bytes[i] ?? 0;
+      result += charset[byteValue % charset.length];
     }
     return result;
   },
