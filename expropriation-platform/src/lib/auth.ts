@@ -5,10 +5,15 @@ import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { logUserLogin, logFailedLogin } from '@/lib/activity-logger';
+import { loggers } from '@/lib/logger';
 import { randomBytes } from 'crypto';
 
 // Validate required environment variables
 if (!process.env.NEXTAUTH_SECRET) {
+  loggers.security.configurationIssue('NEXTAUTH_SECRET not set during auth initialization', {
+    environment: process.env.NODE_ENV,
+    timestamp: new Date().toISOString(),
+  });
   throw new Error('NEXTAUTH_SECRET is not set in environment variables');
 }
 
@@ -53,12 +58,23 @@ export const authOptions: NextAuthOptions = {
         if (!user) {
           // Log failed login for non-existent user
           await logFailedLogin(email, ipAddress, userAgent);
+          loggers.security.loginAttempt(email, ipAddress, false);
           return null;
         }
 
         // Check if user is active and not suspended
         if (!user.isActive || user.isSuspended) {
           await logFailedLogin(email, ipAddress, userAgent);
+          loggers.security.loginAttempt(email, ipAddress, false, user.id);
+          loggers.security.suspiciousActivity('login_attempt_on_inactive_account', {
+            email,
+            userId: user.id,
+            isActive: user.isActive,
+            isSuspended: user.isSuspended,
+            ipAddress,
+            userAgent,
+            timestamp: new Date().toISOString(),
+          });
           return null;
         }
 
@@ -66,8 +82,14 @@ export const authOptions: NextAuthOptions = {
         if (user.lockedUntil && user.lockedUntil > new Date()) {
           // Log attempt on locked account
           await logFailedLogin(email, ipAddress, userAgent);
-          // eslint-disable-next-line no-console
-          console.error(`SECURITY: Login attempt on locked account ${email} from IP: ${ipAddress}`);
+          loggers.security.suspiciousActivity('login_attempt_on_locked_account', {
+            email,
+            userId: user.id,
+            ipAddress,
+            userAgent,
+            lockedUntil: user.lockedUntil.toISOString(),
+            timestamp: new Date().toISOString(),
+          });
           return null;
         }
 
@@ -89,10 +111,19 @@ export const authOptions: NextAuthOptions = {
 
           // Log failed login with security context
           await logFailedLogin(email, ipAddress, userAgent);
+          loggers.security.loginAttempt(email, ipAddress, false, user.id);
 
           if (shouldLockAccount) {
-            // eslint-disable-next-line no-console
-            console.error(`SECURITY: Account ${email} locked for ${Math.round(lockoutDuration / 60000)} minutes after ${newFailedAttempts} failed attempts from IP: ${ipAddress}`);
+            loggers.security.suspiciousActivity('account_locked_due_to_failed_attempts', {
+              email,
+              userId: user.id,
+              ipAddress,
+              userAgent,
+              failedAttempts: newFailedAttempts,
+              lockoutDurationMinutes: Math.round(lockoutDuration / 60000),
+              lockedUntil: new Date(Date.now() + lockoutDuration).toISOString(),
+              timestamp: new Date().toISOString(),
+            });
           }
 
           return null;
@@ -142,6 +173,9 @@ export const authOptions: NextAuthOptions = {
         });
 
         await logUserLogin(user.id, ipAddress, userAgent);
+
+        // Log successful login with security context
+        loggers.security.loginAttempt(email, ipAddress, true, user.id);
 
         // Create user session record with cryptographically secure token
         const sessionToken = randomBytes(32).toString('hex');

@@ -1,6 +1,21 @@
 import { NextResponse } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 import type { NextRequest } from 'next/server';
+import { edgeLogger } from '@/lib/edge-logger';
+
+// Helper function to get client IP
+function getClientIP(req: NextRequest): string {
+  const forwarded = req.headers.get('x-forwarded-for');
+  const real = req.headers.get('x-real-ip');
+
+  if (forwarded) {
+    return forwarded.split(',')[0]?.trim() || 'unknown';
+  }
+  if (real) {
+    return real.trim() || 'unknown';
+  }
+  return 'unknown';
+}
 
 // Helper function to add security headers
 function addSecurityHeaders(response: NextResponse): NextResponse {
@@ -15,12 +30,20 @@ function addSecurityHeaders(response: NextResponse): NextResponse {
 export default async function middleware(req: NextRequest) {
   // Validate that NEXTAUTH_SECRET is set in production
   if (process.env.NODE_ENV === 'production' && !process.env.NEXTAUTH_SECRET) {
-    console.error('CRITICAL: NEXTAUTH_SECRET is not set in production environment');
+    edgeLogger.security.configurationIssue('NEXTAUTH_SECRET not set in production', {
+      environment: process.env.NODE_ENV,
+      url: req.url,
+      ip: getClientIP(req),
+    });
     return new Response('Server configuration error', { status: 500 });
   }
 
   if (!process.env.NEXTAUTH_SECRET) {
-    console.error('WARNING: NEXTAUTH_SECRET is not configured');
+    edgeLogger.security.configurationIssue('NEXTAUTH_SECRET not configured', {
+      environment: process.env.NODE_ENV,
+      url: req.url,
+      ip: getClientIP(req),
+    });
     return new Response('Server configuration error', { status: 500 });
   }
 
@@ -68,30 +91,71 @@ export default async function middleware(req: NextRequest) {
   // Validate user role to prevent privilege escalation
   const validRoles = ['super_admin', 'department_admin', 'analyst', 'supervisor', 'observer', 'technical_meeting_coordinator'];
   if (!validRoles.includes(userRole)) {
-    console.error(`SECURITY: Invalid role "${userRole}" detected for user ${token.email || 'unknown'} from IP: ${req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown'}`);
+    const ip = getClientIP(req);
+    edgeLogger.security.suspiciousActivity('invalid_role_detected', {
+      detectedRole: userRole,
+      userEmail: token.email || 'unknown',
+      userId: token.sub || 'unknown',
+      ip,
+      userAgent: req.headers.get('user-agent') || 'unknown',
+      attemptedPath: pathname,
+      timestamp: new Date().toISOString(),
+    });
     return NextResponse.redirect(new URL('/login', req.url));
   }
 
   // Super admin routes
   if (pathname.startsWith('/admin') && userRole !== 'super_admin') {
+    edgeLogger.security.suspiciousActivity('unauthorized_admin_access', {
+      userId: token.sub || 'unknown',
+      userEmail: token.email || 'unknown',
+      userRole,
+      attemptedPath: pathname,
+      ip: getClientIP(req),
+      userAgent: req.headers.get('user-agent') || 'unknown',
+    });
     return NextResponse.redirect(new URL('/dashboard', req.url));
   }
 
   // Department management routes
   if (pathname.startsWith('/departments') &&
       !['super_admin', 'department_admin'].includes(userRole)) {
+    edgeLogger.security.suspiciousActivity('unauthorized_department_access', {
+      userId: token.sub || 'unknown',
+      userEmail: token.email || 'unknown',
+      userRole,
+      attemptedPath: pathname,
+      ip: getClientIP(req),
+      userAgent: req.headers.get('user-agent') || 'unknown',
+    });
     return NextResponse.redirect(new URL('/dashboard', req.url));
   }
 
   // User management routes
   if (pathname.startsWith('/users') &&
       !['super_admin', 'department_admin'].includes(userRole)) {
+    edgeLogger.security.suspiciousActivity('unauthorized_user_management_access', {
+      userId: token.sub || 'unknown',
+      userEmail: token.email || 'unknown',
+      userRole,
+      attemptedPath: pathname,
+      ip: getClientIP(req),
+      userAgent: req.headers.get('user-agent') || 'unknown',
+    });
     return NextResponse.redirect(new URL('/dashboard', req.url));
   }
 
   // Meeting coordination routes
   if (pathname.startsWith('/meetings') &&
       !['super_admin', 'department_admin', 'technical_meeting_coordinator'].includes(userRole)) {
+    edgeLogger.security.suspiciousActivity('unauthorized_meeting_access', {
+      userId: token.sub || 'unknown',
+      userEmail: token.email || 'unknown',
+      userRole,
+      attemptedPath: pathname,
+      ip: getClientIP(req),
+      userAgent: req.headers.get('user-agent') || 'unknown',
+    });
     return NextResponse.redirect(new URL('/dashboard', req.url));
   }
 
