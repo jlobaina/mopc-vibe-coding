@@ -18,6 +18,8 @@ declare module 'next-auth' {
       isActive: boolean;
       phone?: string;
       avatar?: string;
+      mustChangePassword?: boolean;
+      sessionToken?: string;
     };
   }
 
@@ -36,6 +38,8 @@ declare module 'next-auth' {
     isActive: boolean;
     phone?: string;
     avatar?: string;
+    mustChangePassword?: boolean;
+    sessionToken?: string;
   }
 }
 
@@ -53,5 +57,7 @@ declare module 'next-auth/jwt' {
     isActive: boolean;
     phone?: string;
     avatar?: string;
+    mustChangePassword?: boolean;
+    sessionToken?: string;
   }
 }
