@@ -15,6 +15,7 @@ export async function POST(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const { id, participantId } = await params;
     const body = await request.json();
 
     // Validate request body
@@ -28,7 +29,7 @@ export async function POST(
     // Get meeting and participant
     const [meeting, participant] = await Promise.all([
       prisma.meeting.findUnique({
-        where: { id: (await params).id },
+        where: { id },
         include: {
           organizer: {
             select: { id: true, firstName: true, lastName: true, email: true },
@@ -39,7 +40,7 @@ export async function POST(
         },
       }),
       prisma.meetingParticipant.findUnique({
-        where: { id: (await params).participantId },
+        where: { id: participantId },
         include: {
           user: {
             select: { id: true, firstName: true, lastName: true, email: true },
@@ -70,8 +71,7 @@ export async function POST(
     const canRSVP = participant.userId === session.user.id ||
                    user.role.name === "SUPER_ADMIN" ||
                    user.role.name === "DEPARTMENT_ADMIN" ||
-                   meeting.organizer.id === session.user.id ||
-                   meeting.chair.id === session.user.id;
+                   meeting.organizer.id === session.user.id;
 
     if (!canRSVP) {
       return NextResponse.json({ error: "Permission denied" }, { status: 403 });
@@ -95,13 +95,19 @@ export async function POST(
     }
 
     // Update participant RSVP
+    const updateData: any = {
+      rsvpStatus: validatedData.status,
+      rsvpAt: new Date(),
+    };
+
+    // Only include rsvpNotes if it's provided (not undefined)
+    if (validatedData.notes !== undefined) {
+      updateData.rsvpNotes = validatedData.notes;
+    }
+
     const updatedParticipant = await prisma.meetingParticipant.update({
-      where: { id: (await params).participantId },
-      data: {
-        rsvpStatus: validatedData.status,
-        rsvpAt: new Date(),
-        rsvpNotes: validatedData.notes,
-      },
+      where: { id: participantId },
+      data: updateData,
       include: {
         user: {
           select: {
@@ -134,6 +140,16 @@ export async function POST(
     }
 
     // Create activity log
+    const activityMetadata: any = {
+      meetingId: id,
+      rsvpStatus: validatedData.status,
+    };
+
+    // Only include rsvpNotes if it's provided (not undefined)
+    if (validatedData.notes !== undefined) {
+      activityMetadata.rsvpNotes = validatedData.notes;
+    }
+
     await prisma.activity.create({
       data: {
         action: "UPDATED",
@@ -141,57 +157,41 @@ export async function POST(
         entityId: participant.id,
         description: `${participant.user?.firstName || participant.name} ${participant.user?.lastName || ""} RSVP ${validatedData.status.toLowerCase()} to meeting: ${meeting.title}`,
         userId: session.user.id,
-        metadata: {
-          meetingId: (await params).id,
-          rsvpStatus: validatedData.status,
-          rsvpNotes: validatedData.notes,
-        },
+        metadata: activityMetadata,
       },
     });
 
     // Send notification to organizer and chair
+    const baseNotificationDetails = {
+      rsvpStatus: validatedData.status,
+      participant: {
+        id: participant.id,
+        name: participant.user?.firstName || participant.name,
+        email: participant.user?.email || participant.email,
+      },
+      meetingDetails: {
+        title: meeting.title,
+        startTime: meeting.scheduledStart,
+        endTime: meeting.scheduledEnd,
+      },
+    };
+
     const notifications = [
       {
         recipientId: meeting.organizer.id,
         title: `RSVP Update: ${participant.user?.firstName || participant.name} ${participant.user?.lastName || ""}`,
         message: `${participant.user?.firstName || participant.name} ${participant.user?.lastName || ""} has ${validatedData.status.toLowerCase()} your invitation to "${meeting.title}".`,
-        details: {
-          rsvpStatus: validatedData.status,
-          rsvpNotes: validatedData.notes,
-          participant: {
-            id: participant.id,
-            name: participant.user?.firstName || participant.name,
-            email: participant.user?.email || participant.email,
-          },
-          meetingDetails: {
-            title: meeting.title,
-            startTime: meeting.scheduledStart,
-            endTime: meeting.scheduledEnd,
-          },
-        },
+        details: baseNotificationDetails,
       },
     ];
 
     // Add chair notification if different from organizer
-    if (meeting.chair.id !== meeting.organizer.id) {
+    if (meeting.chair && meeting.chair.id !== meeting.organizer.id) {
       notifications.push({
         recipientId: meeting.chair.id,
         title: `RSVP Update: ${participant.user?.firstName || participant.name} ${participant.user?.lastName || ""}`,
         message: `${participant.user?.firstName || participant.name} ${participant.user?.lastName || ""} has ${validatedData.status.toLowerCase()} your invitation to "${meeting.title}".`,
-        details: {
-          rsvpStatus: validatedData.status,
-          rsvpNotes: validatedData.notes,
-          participant: {
-            id: participant.id,
-            name: participant.user?.firstName || participant.name,
-            email: participant.user?.email || participant.email,
-          },
-          meetingDetails: {
-            title: meeting.title,
-            startTime: meeting.scheduledStart,
-            endTime: meeting.scheduledEnd,
-          },
-        },
+        details: baseNotificationDetails,
       });
     }
 
@@ -200,7 +200,7 @@ export async function POST(
       notifications.map((notification) =>
         prisma.meetingNotification.create({
           data: {
-            meetingId: (await params).id,
+            meetingId: id,
             recipientId: notification.recipientId,
             type: "UPDATE",
             title: notification.title,
@@ -222,7 +222,7 @@ export async function POST(
     console.error("Error updating RSVP:", error);
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: "Validation failed", details: error.errors },
+        { error: "Validation failed", details: error.issues },
         { status: 400 }
       );
     }

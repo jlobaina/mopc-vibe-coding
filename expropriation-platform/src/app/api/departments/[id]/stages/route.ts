@@ -110,12 +110,13 @@ export async function POST(
       );
     }
 
+    const { id } = await params;
     const body = await request.json();
     const { stages } = stageAssignmentSchema.parse(body);
 
     // Check if department exists
     const department = await prisma.department.findUnique({
-      where: { id: (await params).id },
+      where: { id },
       select: { id: true, name: true, code: true },
     });
 
@@ -129,7 +130,7 @@ export async function POST(
     // Deactivate existing assignments
     await prisma.departmentStageAssignment.updateMany({
       where: {
-        departmentId: (await params).id,
+        departmentId: id,
         isActive: true,
       },
       data: {
@@ -142,7 +143,7 @@ export async function POST(
       stages.map(stage =>
         prisma.departmentStageAssignment.create({
           data: {
-            departmentId: (await params).id,
+            departmentId: id,
             stage,
             assignedBy: session.user.id,
           },
@@ -155,7 +156,7 @@ export async function POST(
       userId: session.user.id,
       action: 'UPDATED',
       entityType: 'department',
-      entityId: (await params).id,
+      entityId: id,
       description: `Etapas asignadas al departamento: ${department.name}`,
       metadata: {
         departmentName: department.name,
@@ -182,7 +183,7 @@ export async function POST(
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Datos inválidos', details: error.errors },
+        { error: 'Datos inválidos', details: error.issues },
         { status: 400 }
       );
     }
@@ -362,7 +363,7 @@ export async function DELETE(
       where: {
         departmentId,
         currentStage: stage,
-        status: 'ACTIVE',
+        status: 'EN_PROGRESO',
       },
     });
 

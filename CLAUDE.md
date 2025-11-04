@@ -16,6 +16,7 @@ Your primary task is to develop a comprehensive digital platform for managing ex
 - Database: SQLite with proper relationships
 - Authentication: NextAuth.js with session management
 - Validation: Zod schemas for robust input validation
+  - Use modern Zod patterns: z.enum() instead of nativeEnum(), z.record(keySchema, valueSchema) instead of single-argument record(), and z.coerce.date() for date validation
 - State Management: React Context or Zustand as appropriate
 - Notifications: React Hot Toast for user feedback
 

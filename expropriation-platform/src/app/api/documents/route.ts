@@ -7,37 +7,40 @@ import crypto from 'crypto';
 import path from 'path';
 import fs from 'fs/promises';
 import { DocumentType, DocumentCategory, DocumentStatus, DocumentSecurityLevel } from '@prisma/client';
+import { secureFileUpload, getSecurityHeaders } from '@/lib/file-upload-security';
+import { edgeLogger } from '@/lib/edge-logger';
+import { AtomicUploadOptions } from '@/lib/atomic-upload';
 
 // Validation schemas
 const createDocumentSchema = z.object({
   title: z.string().min(1, "Title is required"),
   description: z.string().optional(),
-  documentType: z.nativeEnum(DocumentType),
-  category: z.nativeEnum(DocumentCategory),
-  securityLevel: z.nativeEnum(DocumentSecurityLevel).default(DocumentSecurityLevel.INTERNAL),
+  documentType: z.enum(Object.values(DocumentType) as [string, ...string[]]),
+  category: z.enum(Object.values(DocumentCategory) as [string, ...string[]]),
+  securityLevel: z.enum(Object.values(DocumentSecurityLevel) as [string, ...string[]]).default(DocumentSecurityLevel.INTERNAL),
   caseId: z.string().optional(),
   tags: z.string().optional(),
-  metadata: z.record(z.any()).optional(),
-  customFields: z.record(z.any()).optional(),
+  metadata: z.record(z.string(), z.any()).optional(),
+  customFields: z.record(z.string(), z.any()).optional(),
   retentionPeriod: z.number().optional(),
-  expiresAt: z.string().datetime().optional(),
+  expiresAt: z.coerce.date().optional(),
 });
 
 const queryDocumentsSchema = z.object({
   page: z.coerce.number().min(1).default(1),
   limit: z.coerce.number().min(1).max(100).default(20),
   search: z.string().optional(),
-  documentType: z.nativeEnum(DocumentType).optional(),
-  category: z.nativeEnum(DocumentCategory).optional(),
-  status: z.nativeEnum(DocumentStatus).optional(),
-  securityLevel: z.nativeEnum(DocumentSecurityLevel).optional(),
+  documentType: z.enum(Object.values(DocumentType) as [string, ...string[]]).optional(),
+  category: z.enum(Object.values(DocumentCategory) as [string, ...string[]]).optional(),
+  status: z.enum(Object.values(DocumentStatus) as [string, ...string[]]).optional(),
+  securityLevel: z.enum(Object.values(DocumentSecurityLevel) as [string, ...string[]]).optional(),
   caseId: z.string().optional(),
   uploadedById: z.string().optional(),
   tags: z.string().optional(),
   sortBy: z.enum(['createdAt', 'updatedAt', 'title', 'fileSize', 'downloadCount']).default('createdAt'),
   sortOrder: z.enum(['asc', 'desc']).default('desc'),
-  dateFrom: z.string().datetime().optional(),
-  dateTo: z.string().datetime().optional(),
+  dateFrom: z.coerce.date().optional(),
+  dateTo: z.coerce.date().optional(),
 });
 
 // File upload configuration
@@ -255,70 +258,100 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });
     }
 
-    // Validate file
-    if (file.size > MAX_FILE_SIZE) {
-      return NextResponse.json(
-        { error: 'File size exceeds maximum allowed size (100MB)' },
-        { status: 400 }
-      );
-    }
-
-    if (!ALLOWED_MIME_TYPES.includes(file.type)) {
-      return NextResponse.json(
-        { error: 'File type not allowed' },
-        { status: 400 }
-      );
-    }
-
     // Validate document data
     const validatedData = createDocumentSchema.parse(documentData);
 
-    // Ensure upload directory exists
-    await ensureUploadDir();
-    const dateDir = await createDateDirectory();
+    // Get user role for security configuration
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { role: { select: { name: true } } }
+    });
 
-    // Generate file path and save file
-    const fileName = generateFilePath(file.name);
-    const filePath = path.join(dateDir, fileName);
+    const userRole = user?.role?.name || 'default';
 
-    // Save file to disk
-    const buffer = Buffer.from(await file.arrayBuffer());
-    await fs.writeFile(filePath, buffer);
+    // Perform secure file upload with comprehensive validation
+    const uploadOptions: Partial<AtomicUploadOptions> = {
+      userId: session.user.id,
+    };
 
-    // Calculate file hash
-    const fileHash = await calculateFileHash(filePath);
+    if (validatedData.caseId) {
+      uploadOptions.caseId = validatedData.caseId;
+    }
+
+    const uploadResult = await secureFileUpload(
+      request,
+      file,
+      userRole,
+      uploadOptions,
+      {
+        userRole,
+      }
+    );
+
+    // Handle upload validation failures
+    if (!uploadResult.success) {
+      const response = NextResponse.json(
+        {
+          error: uploadResult.error,
+          validation: uploadResult.validation,
+        },
+        { status: 400 }
+      );
+
+      // Add security headers to response
+      const securityHeaders = getSecurityHeaders(uploadResult.validation);
+      Object.entries(securityHeaders).forEach(([key, value]) => {
+        response.headers.set(key, value);
+      });
+
+      return response;
+    }
 
     // Extract text content for indexing (simplified version)
     let contentText = '';
-    if (file.type === 'text/plain') {
-      contentText = buffer.toString('utf-8');
+    try {
+      if (file.type === 'text/plain') {
+        const fileBuffer = await fs.readFile(uploadResult.filePath!);
+        contentText = fileBuffer.toString('utf-8');
+      }
+      // TODO: Add text extraction for PDF, DOCX, etc.
+    } catch (error) {
+      console.error('Error extracting text content:', error);
     }
-    // TODO: Add text extraction for PDF, DOCX, etc.
+
+    // Determine actual MIME type from validation
+    const actualMimeType = uploadResult.validation.validationDetails.mimeValidation?.recommendedMimeType || file.type;
 
     // Create document record
     const document = await prisma.document.create({
       data: {
         title: validatedData.title,
-        description: validatedData.description,
-        fileName: fileName,
+        description: validatedData.description || null,
+        fileName: uploadResult.fileName!,
         originalFileName: file.name,
-        filePath: path.relative(process.cwd(), filePath),
+        filePath: path.relative(process.cwd(), uploadResult.filePath!),
         fileSize: file.size,
-        mimeType: file.type,
-        fileHash,
-        documentType: validatedData.documentType,
-        category: validatedData.category,
+        mimeType: actualMimeType,
+        fileHash: uploadResult.validation.validationDetails.malwareScan?.metadata?.fileHash || '',
+        documentType: validatedData.documentType as DocumentType,
+        category: validatedData.category as DocumentCategory,
         status: DocumentStatus.DRAFT,
-        securityLevel: validatedData.securityLevel,
+        securityLevel: validatedData.securityLevel as DocumentSecurityLevel,
         version: 1,
         isLatest: true,
         isDraft: true,
         caseId: validatedData.caseId || null,
         uploadedById: session.user.id,
-        tags: validatedData.tags,
-        metadata: validatedData.metadata || {},
+        tags: validatedData.tags || null,
+        metadata: {
+          ...(validatedData.metadata || {}),
+          securityValidation: JSON.parse(JSON.stringify(uploadResult.validation)),
+          uploadWarnings: uploadResult.validation.warnings,
+          securityLevel: uploadResult.validation.securityLevel,
+          requiresManualReview: uploadResult.validation.requiresManualReview,
+        },
         customFields: validatedData.customFields || {},
-        retentionPeriod: validatedData.retentionPeriod,
+        retentionPeriod: validatedData.retentionPeriod || null,
         expiresAt: validatedData.expiresAt ? new Date(validatedData.expiresAt) : null,
         contentText,
         isIndexed: contentText.length > 0,
@@ -355,8 +388,10 @@ export async function POST(request: NextRequest) {
         filePath: document.filePath,
         metadata: {
           originalFileName: file.name,
-          mimeType: file.type,
+          mimeType: actualMimeType,
           uploadTimestamp: new Date().toISOString(),
+          securityValidation: JSON.parse(JSON.stringify(uploadResult.validation)),
+          securityLevel: uploadResult.validation.securityLevel,
         },
       },
     });
@@ -374,6 +409,18 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Log security events if needed
+    if (uploadResult.validation.securityLevel === 'high' || uploadResult.validation.securityLevel === 'critical') {
+      edgeLogger.security.suspiciousActivity('high_security_level_upload', {
+        userId: session.user.id,
+        documentId: document.id,
+        fileName: file.name,
+        securityLevel: uploadResult.validation.securityLevel,
+        warnings: uploadResult.validation.warnings,
+        requiresManualReview: uploadResult.validation.requiresManualReview,
+      });
+    }
+
     // Format response
     const response = {
       ...document,
@@ -384,15 +431,29 @@ export async function POST(request: NextRequest) {
       fileSizeFormatted: formatFileSize(document.fileSize),
       createdAt: document.createdAt.toISOString(),
       updatedAt: document.updatedAt.toISOString(),
+      securityInfo: {
+        securityLevel: uploadResult.validation.securityLevel,
+        warnings: uploadResult.validation.warnings,
+        requiresManualReview: uploadResult.validation.requiresManualReview,
+        recommendations: uploadResult.validation.recommendations,
+      },
     };
 
-    return NextResponse.json(response, { status: 201 });
+    const jsonResponse = NextResponse.json(response, { status: 201 });
+
+    // Add security headers to response
+    const securityHeaders = getSecurityHeaders(uploadResult.validation);
+    Object.entries(securityHeaders).forEach(([key, value]) => {
+      jsonResponse.headers.set(key, value);
+    });
+
+    return jsonResponse;
   } catch (error) {
     console.error('Error uploading document:', error);
 
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Validation failed', details: error.errors },
+        { error: 'Validation failed', details: error.issues },
         { status: 400 }
       );
     }
