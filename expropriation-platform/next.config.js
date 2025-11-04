@@ -19,7 +19,7 @@ const nextConfig = {
   },
   // Configure headers for security
   async headers() {
-    return [
+    const headers = [
       {
         source: '/(.*)',
         headers: [
@@ -38,6 +38,37 @@ const nextConfig = {
         ],
       },
     ];
+
+    // Add CORS headers for API routes only in production
+    if (process.env.NODE_ENV === 'production') {
+      headers.push({
+        source: '/api/:path*',
+        headers: [
+          {
+            key: 'Access-Control-Allow-Origin',
+            value: process.env.ALLOWED_ORIGIN || process.env.NEXTAUTH_URL || process.env.APP_URL,
+          },
+          {
+            key: 'Access-Control-Allow-Methods',
+            value: 'GET, POST, PUT, DELETE, OPTIONS',
+          },
+          {
+            key: 'Access-Control-Allow-Headers',
+            value: 'Content-Type, Authorization, x-csrf-token, x-requested-with',
+          },
+          {
+            key: 'Access-Control-Allow-Credentials',
+            value: 'true',
+          },
+          {
+            key: 'Access-Control-Max-Age',
+            value: '86400', // 24 hours
+          },
+        ],
+      });
+    }
+
+    return headers;
   },
 };
 
