@@ -3,6 +3,23 @@ import { prisma } from '@/lib/prisma';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 
+interface DashboardStats {
+  totalCases: number
+  activeCases: number
+  completedCases: number
+  pendingCases: number
+  inProgressCases: number
+  overdueCases: number
+  totalUsers: number
+  activeUsers: number
+  totalDepartments: number
+  avgCompletionTime: number
+  casesThisMonth: number
+  casesLastMonth: number
+  monthlyTrend: number
+  monthlyTrendPercent: number
+}
+
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -29,225 +46,179 @@ export async function GET(request: NextRequest) {
     // Build department filter
     const departmentFilter = departmentId ? { departmentId } : {};
 
-    // Get overall statistics
-    const [
-      totalCases,
-      activeCases,
-      completedCases,
-      pendingCases,
-      inProgressCases,
-      overdueCases,
-      totalUsers,
-      activeUsers,
-      totalDepartments,
-      avgCompletionTime,
-      casesThisMonth,
-      casesLastMonth
-    ] = await Promise.all([
-      // Total cases
-      prisma.case.count({
+    const now = new Date();
+    const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+    // Optimized single query approach for cases statistics
+    const caseStats = await prisma.case.groupBy({
+      by: ['status', 'priority', 'currentStage'],
+      where: {
+        ...departmentFilter,
+        deletedAt: null,
+        ...(Object.keys(dateFilter).length > 0 && { createdAt: dateFilter })
+      },
+      _count: true,
+    });
+
+    // Get completion time data in a single query
+    const completionData = await prisma.case.findMany({
+      where: {
+        ...departmentFilter,
+        deletedAt: null,
+        status: 'COMPLETADO',
+        actualEndDate: { not: null },
+        ...(Object.keys(dateFilter).length > 0 && { createdAt: dateFilter })
+      },
+      select: {
+        startDate: true,
+        actualEndDate: true,
+        expectedEndDate: true
+      }
+    });
+
+    // Get overdue cases data separately since it requires date comparison
+    const overdueCasesCount = await prisma.case.count({
+      where: {
+        ...departmentFilter,
+        deletedAt: null,
+        status: { notIn: ['COMPLETADO', 'ARCHIVED', 'CANCELLED'] },
+        expectedEndDate: { lt: now }
+      }
+    });
+
+    // Get monthly data in parallel with other queries
+    const [monthlyData, userStats, totalDepartments] = await Promise.all([
+      // Monthly cases data
+      prisma.case.groupBy({
+        by: ['createdAt'],
         where: {
           ...departmentFilter,
           deletedAt: null,
-          ...(Object.keys(dateFilter).length > 0 && { createdAt: dateFilter })
-        }
+          createdAt: {
+            gte: lastMonthStart
+          }
+        },
+        _count: true,
+        _min: { createdAt: true }
+      }).then(data => {
+        const thisMonth = data.filter(item =>
+          item.createdAt && item.createdAt >= thisMonthStart
+        ).reduce((sum, item) => sum + item._count, 0);
+
+        const lastMonth = data.filter(item =>
+          item.createdAt && item.createdAt >= lastMonthStart && item.createdAt < thisMonthStart
+        ).reduce((sum, item) => sum + item._count, 0);
+
+        return { thisMonth, lastMonth };
       }),
 
-      // Active cases (not completed, archived, suspended, or cancelled)
-      prisma.case.count({
-        where: {
-          ...departmentFilter,
-          deletedAt: null,
-          status: { notIn: ['COMPLETADO', 'ARCHIVED', 'SUSPENDED', 'CANCELLED'] },
-          ...(Object.keys(dateFilter).length > 0 && { createdAt: dateFilter })
-        }
-      }),
-
-      // Completed cases
-      prisma.case.count({
-        where: {
-          ...departmentFilter,
-          deletedAt: null,
-          status: 'COMPLETADO',
-          ...(Object.keys(dateFilter).length > 0 && { createdAt: dateFilter })
-        }
-      }),
-
-      // Pending cases
-      prisma.case.count({
-        where: {
-          ...departmentFilter,
-          deletedAt: null,
-          status: 'PENDIENTE',
-          ...(Object.keys(dateFilter).length > 0 && { createdAt: dateFilter })
-        }
-      }),
-
-      // In progress cases
-      prisma.case.count({
-        where: {
-          ...departmentFilter,
-          deletedAt: null,
-          status: 'EN_PROGRESO',
-          ...(Object.keys(dateFilter).length > 0 && { createdAt: dateFilter })
-        }
-      }),
-
-      // Overdue cases (cases past expected end date)
-      prisma.case.count({
-        where: {
-          ...departmentFilter,
-          deletedAt: null,
-          expectedEndDate: { lt: new Date() },
-          status: { notIn: ['COMPLETADO', 'ARCHIVED', 'CANCELLED'] },
-          ...(Object.keys(dateFilter).length > 0 && { createdAt: dateFilter })
-        }
-      }),
-
-      // Total users
-      prisma.user.count({
+      // User statistics
+      prisma.user.groupBy({
+        by: ['isActive', 'lastLoginAt'],
         where: {
           deletedAt: null,
-          isActive: true,
           ...(departmentId && { departmentId })
-        }
-      }),
+        },
+        _count: true
+      }).then(data => {
+        const totalUsers = data
+          .filter(item => item.isActive)
+          .reduce((sum, item) => sum + item._count, 0);
 
-      // Active users (logged in within last 30 days)
-      prisma.user.count({
-        where: {
-          deletedAt: null,
-          isActive: true,
-          lastLoginAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
-          ...(departmentId && { departmentId })
-        }
+        const activeUsers = data
+          .filter(item => item.isActive && item.lastLoginAt && item.lastLoginAt >= thirtyDaysAgo)
+          .reduce((sum, item) => sum + item._count, 0);
+
+        return { totalUsers, activeUsers };
       }),
 
       // Total departments
       prisma.department.count({
         where: { isActive: true }
-      }),
-
-      // Average completion time (in days)
-      prisma.case.findMany({
-        where: {
-          ...departmentFilter,
-          deletedAt: null,
-          status: 'COMPLETADO',
-          actualEndDate: { not: null },
-          ...(Object.keys(dateFilter).length > 0 && { createdAt: dateFilter })
-        },
-        select: {
-          startDate: true,
-          actualEndDate: true
-        }
-      }).then(cases => {
-        if (cases.length === 0) return 0;
-
-        const totalDays = cases.reduce((sum, case_) => {
-          if (case_.actualEndDate && case_.startDate) {
-            const days = Math.ceil(
-              (new Date(case_.actualEndDate).getTime() - new Date(case_.startDate).getTime()) /
-              (1000 * 60 * 60 * 24)
-            );
-            return sum + days;
-          }
-          return sum;
-        }, 0);
-
-        return Math.round(totalDays / cases.length);
-      }),
-
-      // Cases this month
-      prisma.case.count({
-        where: {
-          ...departmentFilter,
-          deletedAt: null,
-          createdAt: {
-            gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1)
-          }
-        }
-      }),
-
-      // Cases last month
-      prisma.case.count({
-        where: {
-          ...departmentFilter,
-          deletedAt: null,
-          createdAt: {
-            gte: new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1),
-            lt: new Date(new Date().getFullYear(), new Date().getMonth(), 1)
-          }
-        }
       })
     ]);
 
-    // Calculate trends
-    const monthlyTrend = casesThisMonth - casesLastMonth;
-    const monthlyTrendPercent = casesLastMonth > 0 ? (monthlyTrend / casesLastMonth) * 100 : 0;
+    // Process case statistics from aggregated data
+    const stats: DashboardStats = {
+      totalCases: caseStats.reduce((sum, item) => sum + item._count, 0),
+      completedCases: caseStats.find(item => item.status === 'COMPLETADO')?._count || 0,
+      pendingCases: caseStats.find(item => item.status === 'PENDIENTE')?._count || 0,
+      inProgressCases: caseStats.find(item => item.status === 'EN_PROGRESO')?._count || 0,
+      activeCases: caseStats
+        .filter(item => !['COMPLETADO', 'ARCHIVED', 'SUSPENDED', 'CANCELLED'].includes(item.status))
+        .reduce((sum, item) => sum + item._count, 0),
+      overdueCases: overdueCasesCount,
+      totalUsers: userStats.totalUsers,
+      activeUsers: userStats.activeUsers,
+      totalDepartments,
+      avgCompletionTime: 0,
+      casesThisMonth: monthlyData.thisMonth,
+      casesLastMonth: monthlyData.lastMonth,
+      monthlyTrend: monthlyData.thisMonth - monthlyData.lastMonth,
+      monthlyTrendPercent: monthlyData.lastMonth > 0
+        ? ((monthlyData.thisMonth - monthlyData.lastMonth) / monthlyData.lastMonth) * 100
+        : 0
+    };
 
-    // Get priority distribution
-    const priorityDistribution = await prisma.case.groupBy({
-      by: ['priority'],
-      where: {
-        ...departmentFilter,
-        deletedAt: null,
-        ...(Object.keys(dateFilter).length > 0 && { createdAt: dateFilter })
-      },
-      _count: true
-    });
+    // Calculate average completion time
+    if (completionData.length > 0) {
+      const totalDays = completionData.reduce((sum, case_) => {
+        if (case_.actualEndDate && case_.startDate) {
+          const days = Math.ceil(
+            (new Date(case_.actualEndDate).getTime() - new Date(case_.startDate).getTime()) /
+            (1000 * 60 * 60 * 24)
+          );
+          return sum + days;
+        }
+        return sum;
+      }, 0);
+      stats.avgCompletionTime = Math.round(totalDays / completionData.length);
+    }
 
-    // Get status distribution
-    const statusDistribution = await prisma.case.groupBy({
-      by: ['status'],
-      where: {
-        ...departmentFilter,
-        deletedAt: null,
-        ...(Object.keys(dateFilter).length > 0 && { createdAt: dateFilter })
-      },
-      _count: true
-    });
+    // Create distributions from the same grouped data
+    const priorityDistribution = caseStats.reduce((acc, item) => {
+      const existing = acc.find(p => p.name === item.priority);
+      if (existing) {
+        existing.value += item._count;
+      } else {
+        acc.push({ name: item.priority, value: item._count });
+      }
+      return acc;
+    }, [] as { name: string; value: number }[]);
 
-    // Get stage distribution
-    const stageDistribution = await prisma.case.groupBy({
-      by: ['currentStage'],
-      where: {
-        ...departmentFilter,
-        deletedAt: null,
-        status: { notIn: ['COMPLETADO', 'ARCHIVED', 'CANCELLED'] },
-        ...(Object.keys(dateFilter).length > 0 && { createdAt: dateFilter })
-      },
-      _count: true
-    });
+    const statusDistribution = caseStats.reduce((acc, item) => {
+      const existing = acc.find(s => s.name === item.status);
+      if (existing) {
+        existing.value += item._count;
+      } else {
+        acc.push({ name: item.status, value: item._count });
+      }
+      return acc;
+    }, [] as { name: string; value: number }[]);
+
+    const stageDistribution = caseStats
+      .filter(item => !['COMPLETADO', 'ARCHIVED', 'CANCELLED'].includes(item.status))
+      .reduce((acc, item) => {
+        if (item.currentStage) {
+          const existing = acc.find(s => s.name === item.currentStage);
+          if (existing) {
+            existing.value += item._count;
+          } else {
+            acc.push({ name: item.currentStage, value: item._count });
+          }
+        }
+        return acc;
+      }, [] as { name: string; value: number }[]);
 
     const statistics = {
-      overview: {
-        totalCases,
-        activeCases,
-        completedCases,
-        pendingCases,
-        inProgressCases,
-        overdueCases,
-        totalUsers,
-        activeUsers,
-        totalDepartments,
-        avgCompletionTime: avgCompletionTime, // Calculated average
-        monthlyTrend,
-        monthlyTrendPercent: Number(monthlyTrendPercent.toFixed(1))
-      },
+      success: true,
+      data: stats,
       distributions: {
-        priority: priorityDistribution.map(item => ({
-          name: item.priority,
-          value: item._count
-        })),
-        status: statusDistribution.map(item => ({
-          name: item.status,
-          value: item._count
-        })),
-        stage: stageDistribution.map(item => ({
-          name: item.currentStage,
-          value: item._count
-        }))
+        priority: priorityDistribution,
+        status: statusDistribution,
+        stage: stageDistribution
       }
     };
 
@@ -255,7 +226,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Error fetching dashboard statistics:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch dashboard statistics' },
+      { success: false, error: 'Failed to fetch dashboard statistics' },
       { status: 500 }
     );
   }

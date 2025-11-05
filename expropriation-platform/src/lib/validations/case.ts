@@ -3,6 +3,16 @@ import { z } from 'zod'
 // Enums for validation
 const CaseStatusEnum = z.enum(['PENDIENTE', 'EN_PROGRESO', 'COMPLETADO', 'ARCHIVED', 'SUSPENDED', 'CANCELLED'])
 const PriorityEnum = z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT'])
+const ExpropriationReasonEnum = z.enum([
+  'obra_publica',
+  'utilidad_publica',
+  'interes_social',
+  'desarrollo_urbano',
+  'infraestructura',
+  'seguridad_nacional',
+  'otro'
+])
+const UrgencyLevelEnum = z.enum(['normal', 'urgente', 'inmediata'])
 const CaseStageEnum = z.enum([
   'RECEPCION_SOLICITUD',
   'VERIFICACION_REQUISITOS',
@@ -150,6 +160,29 @@ export const CaseSchema = z.object({
     .max(100, 'El estado legal no puede exceder 100 caracteres')
     .optional(),
 
+  // Expropriation Details
+  expropriationReason: ExpropriationReasonEnum.optional(),
+  legalFramework: z.string()
+    .max(200, 'El marco legal no puede exceder 200 caracteres')
+    .optional(),
+  expropriationProject: z.string()
+    .max(200, 'El nombre del proyecto no puede exceder 200 caracteres')
+    .optional(),
+  urgencyLevel: UrgencyLevelEnum.optional(),
+  budgetAllocation: z.number()
+    .nonnegative('La asignación presupuestaria debe ser positiva')
+    .max(10000000000, 'La asignación presupuestaria no puede exceder 10,000,000,000')
+    .optional(),
+  responsibleDepartment: z.string()
+    .max(100, 'El departamento responsable no puede exceder 100 caracteres')
+    .optional(),
+  expropriationJustification: z.string()
+    .max(2000, 'La justificación no puede exceder 2000 caracteres')
+    .optional(),
+  legalConsiderations: z.string()
+    .max(1500, 'Las consideraciones legales no pueden exceder 1500 caracteres')
+    .optional(),
+
   // Relations
   departmentId: z.string()
     .min(1, 'El departamento es requerido'),
@@ -191,6 +224,14 @@ export const CreateCaseSchema = CaseSchema.pick({
   expropriationDecree: true,
   judicialCaseNumber: true,
   legalStatus: true,
+  expropriationReason: true,
+  legalFramework: true,
+  expropriationProject: true,
+  urgencyLevel: true,
+  budgetAllocation: true,
+  responsibleDepartment: true,
+  expropriationJustification: true,
+  legalConsiderations: true,
   departmentId: true,
   assignedToId: true,
   supervisedById: true

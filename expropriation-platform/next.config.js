@@ -1,11 +1,37 @@
 /** @type {import('next').NextConfig} */
-const nextConfig = {
+const withBundleAnalyzer = require('@next/bundle-analyzer')({
+  enabled: process.env.ANALYZE === 'true',
+});
+
+const nextConfig = withBundleAnalyzer({
   // Move @prisma/client to serverExternalPackages for Next.js 15
-  serverExternalPackages: ['@prisma/client'],
+  serverExternalPackages: [
+    '@prisma/client',
+    'sharp',
+    'archiver',
+    'xlsx',
+    'jspdf',
+    'html2canvas',
+    'bull',
+    'nodemailer',
+    'bcrypt',
+    'argon2'
+  ],
   // Enable React strict mode for better error handling
   reactStrictMode: true,
-  // Handle proper module resolution
-  webpack: (config, { isServer }) => {
+  // Experimental optimizations for tree-shaking
+  experimental: {
+    optimizePackageImports: [
+      'lucide-react',
+      'recharts',
+      'react-day-picker',
+      'date-fns',
+      'lodash-es',
+      '@radix-ui/react-icons'
+    ],
+  },
+  // Handle proper module resolution with bundle splitting
+  webpack: (config, { isServer, dev }) => {
     if (!isServer) {
       // Exclude server-only modules from client bundle
       config.resolve.fallback = {
@@ -13,7 +39,70 @@ const nextConfig = {
         fs: false,
         net: false,
         tls: false,
+        child_process: false,
       };
+
+      // Add bundle splitting for production
+      if (!dev) {
+        config.optimization = {
+          ...config.optimization,
+          splitChunks: {
+            chunks: 'all',
+            cacheGroups: {
+              // Split vendor libraries
+              vendor: {
+                test: /[\\/]node_modules[\\/]/,
+                name: 'vendors',
+                chunks: 'all',
+                priority: 10,
+              },
+              // Split React ecosystem
+              react: {
+                test: /[\\/]node_modules[\\/](react|react-dom|react-query|@tanstack)[\\/]/,
+                name: 'react',
+                chunks: 'all',
+                priority: 20,
+              },
+              // Split UI libraries
+              ui: {
+                test: /[\\/]node_modules[\\/](@radix-ui|lucide-react|class-variance-authority|clsx|tailwind-merge)[\\/]/,
+                name: 'ui',
+                chunks: 'all',
+                priority: 15,
+              },
+              // Split chart libraries
+              charts: {
+                test: /[\\/]node_modules[\\/](recharts|d3|chart\.js)[\\/]/,
+                name: 'charts',
+                chunks: 'all',
+                priority: 15,
+              },
+              // Split date/time libraries
+              date: {
+                test: /[\\/]node_modules[\\/](date-fns|dayjs|moment|react-day-picker)[\\/]/,
+                name: 'date',
+                chunks: 'all',
+                priority: 15,
+              },
+              // Split utility libraries
+              utils: {
+                test: /[\\/]node_modules[\\/](lodash-es|ramda|underscore)[\\/]/,
+                name: 'utils',
+                chunks: 'all',
+                priority: 15,
+              },
+              // Common chunks for shared code
+              common: {
+                name: 'common',
+                minChunks: 2,
+                chunks: 'all',
+                priority: 5,
+                reuseExistingChunk: true,
+              },
+            },
+          },
+        };
+      }
     }
     return config;
   },
@@ -70,6 +159,6 @@ const nextConfig = {
 
     return headers;
   },
-};
+});
 
 module.exports = nextConfig;
