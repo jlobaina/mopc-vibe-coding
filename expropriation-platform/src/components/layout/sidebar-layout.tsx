@@ -2,7 +2,7 @@
 
 import { Button } from '@/components/ui/button'
 import { SidebarNavigation } from './sidebar-navigation'
-import { useSidebar } from '@/hooks/use-sidebar'
+import { useSidebar, SidebarProvider } from '@/hooks/use-sidebar'
 import { Menu } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -11,6 +11,7 @@ interface SidebarLayoutProps {
   className?: string
 }
 
+export { SidebarProvider }
 export function SidebarLayout({ children, className }: SidebarLayoutProps) {
   const { isCollapsed, isMobileOpen, toggleSidebar, closeMobileSidebar } = useSidebar()
 

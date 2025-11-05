@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import { headers } from "next/headers";
 import { AuthProvider } from "@/components/providers/auth-provider";
+import { QueryProvider } from "@/components/providers/query-client-provider";
 import { ThemeProvider } from "@/components/theme/theme-provider";
 import { TutorialProvider } from "@/components/tutorial/tutorial-provider";
 import { EnhancedToastProvider } from "@/components/notifications/enhanced-toast-provider";
@@ -60,7 +61,8 @@ export default async function RootLayout({
         >
           <TutorialProvider>
             <AuthProvider>
-              <KeyboardShortcutsProvider>
+              <QueryProvider>
+                <KeyboardShortcutsProvider>
                 <EnhancedToastProvider>
                   <PerfMonitor />
                   <MicroInteractionStyles />
@@ -86,6 +88,7 @@ export default async function RootLayout({
                   <TutorialOverlay />
                 </EnhancedToastProvider>
               </KeyboardShortcutsProvider>
+              </QueryProvider>
             </AuthProvider>
           </TutorialProvider>
         </ThemeProvider>

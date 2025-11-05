@@ -135,7 +135,20 @@ export function DashboardStats({ departmentId }: { departmentId?: string }) {
       }
 
       const data = await response.json();
-      setStats(data);
+
+      // Handle API response structure: { success: true, data: {...}, distributions: {...} }
+      if (data.success && data.data && data.distributions) {
+        // Transform the API response to match the component's expected structure
+        const transformedData: DashboardStats = {
+          overview: data.data,
+          distributions: data.distributions
+        };
+        setStats(transformedData);
+      } else {
+        // Fallback for backward compatibility or different response structure
+        setStats(data);
+      }
+
       setLastUpdated(new Date());
       setError(null);
     } catch (err) {

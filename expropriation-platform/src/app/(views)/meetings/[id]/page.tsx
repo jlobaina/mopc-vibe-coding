@@ -18,7 +18,6 @@ import {
   Download,
   Share,
   MoreHorizontal,
-  User,
   Settings
 } from 'lucide-react'
 
@@ -27,10 +26,8 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ResponsiveContainer } from '@/components/ui/responsive-container'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { toast } from 'react-hot-toast'
 import {
   DropdownMenu,
@@ -73,7 +70,7 @@ export default function MeetingDetailsPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const params = useParams()
-  const meetingId = params.id as string
+  const meetingId = params?.id as string
 
   const [meeting, setMeeting] = useState<Meeting | null>(null)
   const [loading, setLoading] = useState(true)
@@ -123,7 +120,9 @@ export default function MeetingDetailsPage() {
   // Get status badge
   const getStatusBadge = (status: string) => {
     const statusConfig = MEETING_STATUSES.find(s => s.value === status)
-    if (!statusConfig) return <Badge variant="secondary">{status}</Badge>
+    if (!statusConfig) {
+      return <Badge variant="secondary">{status}</Badge>
+    }
     const Icon = statusConfig.icon
     return (
       <Badge className={statusConfig.color}>
@@ -136,14 +135,18 @@ export default function MeetingDetailsPage() {
   // Get type badge
   const getTypeBadge = (type: string) => {
     const typeConfig = MEETING_TYPES.find(t => t.value === type)
-    if (!typeConfig) return <Badge variant="outline">{type}</Badge>
+    if (!typeConfig) {
+      return <Badge variant="outline">{type}</Badge>
+    }
     return <Badge className={typeConfig.color}>{typeConfig.label}</Badge>
   }
 
   // Get priority badge
   const getPriorityBadge = (priority: string) => {
     const priorityConfig = PRIORITIES.find(p => p.value === priority)
-    if (!priorityConfig) return <Badge variant="secondary">{priority}</Badge>
+    if (!priorityConfig) {
+      return <Badge variant="secondary">{priority}</Badge>
+    }
     return <Badge className={priorityConfig.color}>{priorityConfig.label}</Badge>
   }
 
