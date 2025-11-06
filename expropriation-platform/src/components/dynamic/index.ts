@@ -12,6 +12,14 @@ export const CaseForm = dynamic(
   }
 )
 
+export const CaseFormModular = dynamic(
+  () => import('@/components/cases/case-form-modular').then(mod => ({ default: mod.CaseFormModular })),
+  {
+    loading: () => React.createElement('div', { className: 'animate-pulse' }, 'Loading form...'),
+    ssr: false
+  }
+)
+
 export const UserForm = dynamic(
   () => import('@/components/users/user-form').then(mod => ({ default: mod.UserForm })),
   {
