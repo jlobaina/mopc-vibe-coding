@@ -25,7 +25,7 @@ import {
   Calendar
 } from 'lucide-react';
 import { DashboardStats } from '@/components/dashboard/dashboard-stats';
-import { DashboardCharts } from '@/components/dashboard/dashboard-charts';
+import { DashboardCharts } from '@/components/dynamic';
 import { DashboardCases } from '@/components/dashboard/dashboard-cases';
 import { DashboardAlerts } from '@/components/dashboard/dashboard-alerts';
 import { GlobalSearch } from '@/components/search/global-search';
@@ -190,17 +190,17 @@ export default function DashboardPage() {
               </TabsList>
 
               <TabsContent value="overview" className="space-y-6" id="overview-panel" role="tabpanel">
-                <DashboardStats departmentId={user?.departmentId} />
+                <DashboardStats {...(user?.departmentId && { departmentId: user.departmentId })} />
               </TabsContent>
 
               <TabsContent value="analytics" className="space-y-6" id="analytics-panel" role="tabpanel">
-                <DashboardCharts departmentId={user?.departmentId} />
+                <DashboardCharts {...(user?.departmentId && { departmentId: user.departmentId })} />
               </TabsContent>
 
               <TabsContent value="cases" className="space-y-6" id="cases-panel" role="tabpanel">
                 <DashboardCases
-                  departmentId={user?.departmentId}
-                  userId={user?.id}
+                  {...(user?.departmentId && { departmentId: user.departmentId })}
+                  {...(user?.id && { userId: user.id })}
                 />
               </TabsContent>
 
@@ -210,8 +210,8 @@ export default function DashboardPage() {
 
               <TabsContent value="alerts" className="space-y-6" id="alerts-panel" role="tabpanel">
                 <DashboardAlerts
-                  departmentId={user?.departmentId}
-                  userId={user?.id}
+                  {...(user?.departmentId && { departmentId: user.departmentId })}
+                  {...(user?.id && { userId: user.id })}
                 />
               </TabsContent>
             </Tabs>

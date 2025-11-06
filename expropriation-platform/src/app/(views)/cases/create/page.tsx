@@ -3,7 +3,7 @@
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 
-import { CaseForm } from '@/components/cases/case-form'
+import { CaseFormModular } from '@/components/dynamic'
 
 export default function CreateCasePage() {
   const { data: session, status } = useSession()
@@ -31,5 +31,25 @@ export default function CreateCasePage() {
     return null
   }
 
-  return <CaseForm mode="create" />
+  const handleSave = async (data: any) => {
+    try {
+      const response = await fetch('/api/cases', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to create case')
+      }
+
+      router.push('/cases')
+    } catch (error) {
+      console.error('Error creating case:', error)
+    }
+  }
+
+  return <CaseFormModular mode="create" onSave={handleSave} />
 }

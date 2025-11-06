@@ -5,7 +5,7 @@ import { useSession } from 'next-auth/react'
 import { useRouter, useParams } from 'next/navigation'
 import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from 'react-hot-toast'
-import { CaseForm } from '@/components/cases/case-form'
+import { CaseFormModular } from '@/components/dynamic'
 import { Case } from '@/types/client'
 
 export default function EditCasePage() {
@@ -89,5 +89,27 @@ export default function EditCasePage() {
     )
   }
 
-  return <CaseForm mode="edit" caseId={caseId} initialData={caseData} />
+  const handleSave = async (data: any) => {
+    try {
+      const response = await fetch(`/api/cases/${caseId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to update case')
+      }
+
+      toast.success('Caso actualizado exitosamente')
+      router.push('/cases')
+    } catch (error) {
+      console.error('Error updating case:', error)
+      toast.error('Error al actualizar el caso')
+    }
+  }
+
+  return <CaseFormModular mode="edit" caseData={caseData} onSave={handleSave} />
 }
