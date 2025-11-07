@@ -6,6 +6,8 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { RefreshCw } from 'lucide-react'
 
 interface FormSectionProps {
   register: UseFormRegister<any>
@@ -31,7 +33,35 @@ const STATUSES = [
   { value: 'CANCELLED', label: 'Cancelado', color: 'bg-red-100 text-red-800' },
 ]
 
-export function CaseBasicInfo({ register, errors, control, setValue, watch }: FormSectionProps) {
+export function CaseBasicInfo({ register, errors, setValue, watch }: FormSectionProps) {
+  const generateCaseNumber = async () => {
+    const now = new Date()
+    const year = now.getFullYear()
+    const month = (now.getMonth() + 1).toString().padStart(2, '0')
+    const day = now.getDate().toString().padStart(2, '0')
+    let index = 0;
+    try {
+      // Get today's case count from database
+      const response = await fetch('/api/cases/count-today', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to get case count')
+      }
+
+      const data = await response.json()
+      index = data.count + 1 // Next case number
+    } catch (error) {
+      console.error('Error getting number of cases:', error)
+    }
+    const caseNumber = `EXP-${year}${month}${day}-${index.toString().padStart(3, '0')}`
+    setValue('fileNumber', caseNumber)
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -44,12 +74,25 @@ export function CaseBasicInfo({ register, errors, control, setValue, watch }: Fo
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <Label htmlFor="fileNumber">Número de Expediente *</Label>
-            <Input
-              id="fileNumber"
-              {...register('fileNumber', { required: 'El número de expediente es requerido' })}
-              placeholder="EXP-2024-001"
-              className={errors.fileNumber ? 'border-red-500' : ''}
-            />
+            <div className="flex space-x-2">
+              <Input
+                id="fileNumber"
+                {...register('fileNumber', { required: 'El número de expediente es requerido' })}
+                placeholder="EXP-20241106-001"
+                className={errors.fileNumber ? 'border-red-500' : ''}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => generateCaseNumber()}
+                className="whitespace-nowrap"
+                title="Generar número de expediente automáticamente"
+              >
+                <RefreshCw className="h-4 w-4 mr-1" />
+                Generar
+              </Button>
+            </div>
             {errors.fileNumber && (
               <p className="text-sm text-red-500 mt-1">
                 {errors.fileNumber.message as string}
