@@ -206,6 +206,7 @@ export const CreateCaseSchema = CaseSchema.pick({
   title: true,
   description: true,
   priority: true,
+  startDate: true,
   propertyAddress: true,
   propertyCity: true,
   propertyProvince: true,

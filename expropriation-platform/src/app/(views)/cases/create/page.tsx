@@ -42,14 +42,21 @@ export default function CreateCasePage() {
       })
 
       if (!response.ok) {
-        throw new Error('Failed to create case')
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to create case')
       }
 
       router.push('/cases')
     } catch (error) {
       console.error('Error creating case:', error)
+      // Re-throw to let the form component handle the error display
+      throw error
     }
   }
 
-  return <CaseFormModular mode="create" onSave={handleSave} />
+  const handleCancel = () => {
+    router.push('/cases')
+  }
+
+  return <CaseFormModular mode="create" onSave={handleSave} onCancel={handleCancel} />
 }

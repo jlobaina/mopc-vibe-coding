@@ -65,7 +65,7 @@ export function SidebarLayout({ children, className }: SidebarLayoutProps) {
 
         {/* Main Content Area */}
         <main className="flex-1 overflow-auto">
-          <div className="h-full">
+          <div className="h-full px-4">
             {children}
           </div>
         </main>
