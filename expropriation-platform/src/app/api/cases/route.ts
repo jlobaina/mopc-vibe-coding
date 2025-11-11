@@ -328,7 +328,7 @@ export async function POST(request: NextRequest) {
       data: {
         ...caseData,
         createdById: user.id,
-        startDate: new Date(),
+        startDate: caseData.startDate || new Date(),
         // Convert undefined to null for optional fields that Prisma expects as nullable
         description: caseData.description ?? null,
         propertyDescription: caseData.propertyDescription ?? null,

@@ -4,11 +4,12 @@ import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { useRouter } from 'next/navigation'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { ArrowLeft, Save, Eye } from 'lucide-react'
+import { ArrowLeft, Save, Eye, AlertTriangle } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Progress } from '@/components/ui/progress'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { useEnhancedToast } from '@/components/notifications/enhanced-toast-provider'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import ErrorBoundary from '@/components/ui/error-boundary'
@@ -19,7 +20,7 @@ import { ExpropriationDetails } from './form-sections/expropriation-details'
 import { DocumentUpload } from './document-upload'
 import { DocumentList } from './document-list'
 
-import { CreateCaseSchema, CreateCaseInput, UpdateCaseInput } from '@/lib/validations/case'
+import { CreateCaseSchema, UpdateCaseSchema, CreateCaseInput, UpdateCaseInput } from '@/lib/validations/case'
 import { Case } from '@/types/client'
 
 interface CaseCreationDocument {
@@ -59,13 +60,18 @@ export function CaseFormModular({
   const [showSaveDialog, setShowSaveDialog] = useState(false)
   const [currentStage, setCurrentStage] = useState('basic')
   const [progress, setProgress] = useState(0)
+  const [submitAttempted, setSubmitAttempted] = useState(false)
+  const [isSubmittingForm, setIsSubmittingForm] = useState(false)
 
   // Default form values
   const defaultFormValues = {
     fileNumber: caseData?.fileNumber || '',
     title: caseData?.title || '',
     description: caseData?.description || '',
-    priority: 'MEDIUM' as const,
+    status: caseData?.status || 'PENDIENTE',
+    priority: caseData?.priority || 'MEDIUM',
+    currentStage: caseData?.currentStage || 'RECEPCION_SOLICITUD',
+    startDate: caseData?.startDate ? new Date(caseData.startDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0], // Format date for input
     propertyAddress: caseData?.propertyAddress || '',
     propertyCity: caseData?.propertyCity || '',
     propertyProvince: caseData?.propertyProvince || '',
@@ -87,7 +93,7 @@ export function CaseFormModular({
     departmentId: caseData?.departmentId || '',
     assignedToId: caseData?.assignedToId,
     supervisedById: caseData?.supervisedById,
-    expectedEndDate: caseData?.expectedEndDate,
+    expectedEndDate: caseData?.expectedEndDate ? new Date(caseData.expectedEndDate).toISOString().split('T')[0] : undefined,
     isDraft: caseData?.isDraft ?? true
   }
 
@@ -99,8 +105,9 @@ export function CaseFormModular({
     setValue,
     watch
   } = useForm({
-    resolver: zodResolver(CreateCaseSchema),
-    defaultValues: defaultFormValues
+    resolver: zodResolver(mode === 'edit' ? UpdateCaseSchema : CreateCaseSchema),
+    defaultValues: defaultFormValues,
+    mode: 'onBlur' // Validate on blur for better UX
   })
 
   
@@ -109,7 +116,12 @@ export function CaseFormModular({
     const fields = ['fileNumber', 'title', 'description', 'status', 'priority', 'currentStage']
     const completedFields = fields.filter(field => watch(field as any))
     setProgress((completedFields.length / fields.length) * 100)
-  }, [watch])
+
+    // Clear validation alert when user starts fixing errors
+    if (submitAttempted && Object.keys(errors).length === 0) {
+      setSubmitAttempted(false)
+    }
+  }, [watch, errors, submitAttempted])
 
   const stages: Array<{ id: string; label: string; icon: string }> = [
     { id: 'basic', label: 'Información Básica', icon: '📋' },
@@ -122,19 +134,44 @@ export function CaseFormModular({
   const onSubmit = async (data: any) => {
     try {
       await onSave(data, creationDocuments)
-      toast({
-        title: 'Caso guardado exitosamente',
-        description: `El caso ${data.fileNumber} ha sido ${mode === 'create' ? 'creado' : 'actualizado'} correctamente.`,
-        type: 'success'
-      })
-      router.push('/cases')
+      // Navigation is handled by the parent component's handleSave
+      // Only show success message for create mode (edit mode shows its own)
+      if (mode === 'create') {
+        toast({
+          title: 'Caso guardado exitosamente',
+          description: `El caso ${data.fileNumber} ha sido creado correctamente.`,
+          type: 'success'
+        })
+      }
+      setSubmitAttempted(false) // Reset on successful submission
     } catch (error) {
       toast({
         title: 'Error al guardar el caso',
         description: error instanceof Error ? error.message : 'Ocurrió un error inesperado',
         type: 'error'
       })
+      // Don't reset submitAttempted on error - user needs to fix the issues
+      // Re-throw to prevent form from clearing on error
+      throw error
     }
+  }
+
+  const handleSaveClick = () => {
+    // Prevent multiple submissions
+    if (isSubmittingForm) {
+      return
+    }
+
+    setIsSubmittingForm(true)
+    setSubmitAttempted(true)
+
+    // Trigger form validation and submission
+    handleSubmit(onSubmit)().finally(() => {
+      setIsSubmittingForm(false)
+    }).catch(() => {
+      // handleSubmit will catch validation errors
+      // Validation alert will show automatically
+    })
   }
 
   const handleSave = () => {
@@ -165,7 +202,11 @@ export function CaseFormModular({
     if (nextStage) {
       setCurrentStage(nextStage.id)
     } else {
-      handleSubmit(onSubmit)()
+      // This is the save case - trigger validation and submit
+      setSubmitAttempted(true)
+      handleSubmit(onSubmit)().catch(() => {
+        // Validation errors will be caught and alert will show
+      })
     }
   }
 
@@ -223,14 +264,30 @@ export function CaseFormModular({
               {isPreview ? 'Editar' : 'Vista Previa'}
             </Button>
             <Button
-              onClick={handleSubmit(onSubmit)}
-              disabled={isSubmitting || !isDirty}
+              onClick={handleSaveClick}
+              disabled={isSubmitting}
             >
               <Save className="h-4 w-4 mr-2" />
               {isSubmitting ? 'Guardando...' : 'Guardar'}
             </Button>
           </div>
         </div>
+
+        {/* Validation Alert - Top of Form */}
+        {console.log({ submitAttempted, errors })}
+        {submitAttempted && Object.keys(errors).length > 0 && (
+          <div className="border border-orange-200 bg-orange-50 rounded-lg p-4 mb-4">
+            <div className="flex items-center space-x-2">
+              <AlertTriangle className="h-4 w-4 text-orange-600 flex-shrink-0" />
+              <p className="text-orange-800 text-sm font-medium">
+                Campos requeridos faltantes
+              </p>
+            </div>
+            <p className="text-orange-700 text-sm mt-1 ml-6">
+              Por favor complete todos los campos obligatorios marcados en rojo antes de guardar el caso.
+            </p>
+          </div>
+        )}
 
         {/* Progress Indicator */}
         <div className="space-y-2">
@@ -242,7 +299,10 @@ export function CaseFormModular({
         </div>
 
         {/* Form Content */}
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+        <form onSubmit={(e) => {
+    e.preventDefault()
+    handleSaveClick()
+  }} className="space-y-6">
           <Tabs value={currentStage} onValueChange={setCurrentStage} className="w-full">
             <TabsList className="grid w-full grid-cols-5">
               {stages.map((stage) => {

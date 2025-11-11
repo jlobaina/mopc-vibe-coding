@@ -100,7 +100,8 @@ export default function EditCasePage() {
       })
 
       if (!response.ok) {
-        throw new Error('Failed to update case')
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to update case')
       }
 
       toast.success('Caso actualizado exitosamente')
@@ -108,8 +109,14 @@ export default function EditCasePage() {
     } catch (error) {
       console.error('Error updating case:', error)
       toast.error('Error al actualizar el caso')
+      // Re-throw to let the form component handle the error display
+      throw error
     }
   }
 
-  return <CaseFormModular mode="edit" caseData={caseData} onSave={handleSave} />
+  const handleCancel = () => {
+    router.push('/cases')
+  }
+
+  return <CaseFormModular mode="edit" caseData={caseData} onSave={handleSave} onCancel={handleCancel} />
 }
