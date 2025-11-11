@@ -2,14 +2,12 @@
 
 import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
-import { useRouter } from 'next/navigation'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { ArrowLeft, Save, Eye, AlertTriangle } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Progress } from '@/components/ui/progress'
-import { Alert, AlertDescription } from '@/components/ui/alert'
 import { useEnhancedToast } from '@/components/notifications/enhanced-toast-provider'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import ErrorBoundary from '@/components/ui/error-boundary'
@@ -52,7 +50,6 @@ export function CaseFormModular({
   isSubmitting = false,
   mode = 'create'
 }: CaseFormProps) {
-  const router = useRouter()
   const { toast } = useEnhancedToast()
 
   const [creationDocuments] = useState<CaseCreationDocument[]>([])
@@ -62,22 +59,20 @@ export function CaseFormModular({
   const [progress, setProgress] = useState(0)
   const [submitAttempted, setSubmitAttempted] = useState(false)
   const [isSubmittingForm, setIsSubmittingForm] = useState(false)
-
+  const startDate = new Date(caseData?.startDate || "");
   // Default form values
   const defaultFormValues = {
     fileNumber: caseData?.fileNumber || '',
     title: caseData?.title || '',
     description: caseData?.description || '',
-    status: caseData?.status || 'PENDIENTE',
-    priority: caseData?.priority || 'MEDIUM',
-    currentStage: caseData?.currentStage || 'RECEPCION_SOLICITUD',
-    startDate: caseData?.startDate ? new Date(caseData.startDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0], // Format date for input
+    priority: (caseData?.priority as 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT') || 'MEDIUM',
+    startDate: startDate.toISOString().split('T')[0],
     propertyAddress: caseData?.propertyAddress || '',
     propertyCity: caseData?.propertyCity || '',
     propertyProvince: caseData?.propertyProvince || '',
     propertyDescription: caseData?.propertyDescription || '',
     propertyCoordinates: caseData?.propertyCoordinates || '',
-    propertyArea: caseData?.propertyArea,
+    propertyArea: caseData?.propertyArea || 1,
     propertyType: caseData?.propertyType || '',
     ownerName: caseData?.ownerName || '',
     ownerIdentification: caseData?.ownerIdentification || '',
@@ -104,7 +99,7 @@ export function CaseFormModular({
     control,
     setValue,
     watch
-  } = useForm({
+  } = useForm<any>({
     resolver: zodResolver(mode === 'edit' ? UpdateCaseSchema : CreateCaseSchema),
     defaultValues: defaultFormValues,
     mode: 'onBlur' // Validate on blur for better UX
@@ -248,7 +243,9 @@ export function CaseFormModular({
             </Button>
             <div>
               <h1 className="text-2xl font-bold">
-                {mode === 'create' ? 'Nuevo Caso de Expropiación' : `Editar Caso: ${caseData?.fileNumber}`}
+                {mode === 'create'
+                  ? 'Nuevo Caso de Expropiación'
+                  : `Editar Caso: ${caseData?.fileNumber}`}
               </h1>
               <p className="text-muted-foreground">
                 Complete la información del caso paso a paso
@@ -256,17 +253,11 @@ export function CaseFormModular({
             </div>
           </div>
           <div className="flex items-center space-x-2">
-            <Button
-              variant="outline"
-              onClick={() => setIsPreview(!isPreview)}
-            >
+            <Button variant="outline" onClick={() => setIsPreview(!isPreview)}>
               <Eye className="h-4 w-4 mr-2" />
               {isPreview ? 'Editar' : 'Vista Previa'}
             </Button>
-            <Button
-              onClick={handleSaveClick}
-              disabled={isSubmitting}
-            >
+            <Button onClick={handleSaveClick} disabled={isSubmitting}>
               <Save className="h-4 w-4 mr-2" />
               {isSubmitting ? 'Guardando...' : 'Guardar'}
             </Button>
@@ -274,7 +265,6 @@ export function CaseFormModular({
         </div>
 
         {/* Validation Alert - Top of Form */}
-        {console.log({ submitAttempted, errors })}
         {submitAttempted && Object.keys(errors).length > 0 && (
           <div className="border border-orange-200 bg-orange-50 rounded-lg p-4 mb-4">
             <div className="flex items-center space-x-2">
@@ -284,7 +274,8 @@ export function CaseFormModular({
               </p>
             </div>
             <p className="text-orange-700 text-sm mt-1 ml-6">
-              Por favor complete todos los campos obligatorios marcados en rojo antes de guardar el caso.
+              Por favor complete todos los campos obligatorios marcados en rojo
+              antes de guardar el caso.
             </p>
           </div>
         )}
@@ -299,14 +290,21 @@ export function CaseFormModular({
         </div>
 
         {/* Form Content */}
-        <form onSubmit={(e) => {
-    e.preventDefault()
-    handleSaveClick()
-  }} className="space-y-6">
-          <Tabs value={currentStage} onValueChange={setCurrentStage} className="w-full">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleSaveClick();
+          }}
+          className="space-y-6"
+        >
+          <Tabs
+            value={currentStage}
+            onValueChange={setCurrentStage}
+            className="w-full"
+          >
             <TabsList className="grid w-full grid-cols-5">
               {stages.map((stage) => {
-                const stageProgress = getStageProgress(stage.id)
+                const stageProgress = getStageProgress(stage.id);
                 return (
                   <TabsTrigger
                     key={stage.id}
@@ -319,7 +317,7 @@ export function CaseFormModular({
                       <div className="absolute -top-1 -right-1 h-2 w-2 bg-green-500 rounded-full" />
                     )}
                   </TabsTrigger>
-                )
+                );
               })}
             </TabsList>
 
@@ -378,9 +376,7 @@ export function CaseFormModular({
                       currentStage={caseData.currentStage}
                       maxFiles={20}
                     />
-                    <DocumentList
-                      caseId={caseData.id}
-                    />
+                    <DocumentList caseId={caseData.id} />
                   </>
                 ) : null}
               </TabsContent>
@@ -398,10 +394,7 @@ export function CaseFormModular({
               Anterior
             </Button>
 
-            <Button
-              type="button"
-              onClick={handleNextStage}
-            >
+            <Button type="button" onClick={handleNextStage}>
               {currentStage === 'documents' ? 'Guardar' : 'Siguiente'}
             </Button>
           </div>
@@ -419,7 +412,10 @@ export function CaseFormModular({
               </DialogDescription>
             </DialogHeader>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setShowSaveDialog(false)}>
+              <Button
+                variant="outline"
+                onClick={() => setShowSaveDialog(false)}
+              >
                 Cancelar
               </Button>
               <Button variant="outline" onClick={onCancel}>
@@ -433,5 +429,5 @@ export function CaseFormModular({
         </Dialog>
       </div>
     </ErrorBoundary>
-  )
+  );
 }

@@ -169,7 +169,7 @@ export function ExpropriationDetails({ register, errors, control, setValue, watc
             <Input
               id="estimatedValue"
               type="number"
-              step="0.01"
+              step="1000"
               {...register('estimatedValue', {
                 valueAsNumber: true,
                 min: { value: 0, message: 'El valor debe ser positivo' },
@@ -190,7 +190,7 @@ export function ExpropriationDetails({ register, errors, control, setValue, watc
             <Input
               id="actualValue"
               type="number"
-              step="0.01"
+              step="1000"
               {...register('actualValue', {
                 valueAsNumber: true,
                 min: { value: 0, message: 'El valor debe ser positivo' },
@@ -211,7 +211,7 @@ export function ExpropriationDetails({ register, errors, control, setValue, watc
             <Input
               id="appraisalValue"
               type="number"
-              step="0.01"
+              step="1000"
               {...register('appraisalValue', {
                 valueAsNumber: true,
                 min: { value: 0, message: 'El valor debe ser positivo' },
@@ -232,7 +232,7 @@ export function ExpropriationDetails({ register, errors, control, setValue, watc
             <Input
               id="compensationAmount"
               type="number"
-              step="0.01"
+              step="1000"
               {...register('compensationAmount', {
                 valueAsNumber: true,
                 min: { value: 0, message: 'El monto debe ser positivo' },
