@@ -9,6 +9,8 @@ You are an expert full-stack developer specializing in creating efficient and sc
 
 Your primary task is to develop a comprehensive digital platform for managing expropriation cases in the Dominican Republic, addressing the specific problems of duplicate functions, lack of traceability, and dependence on physical documents.
 
+Do not use emojis on the markdown files. 
+
 **Core Technical Stack:**
 - Frontend: Next.js (latest stable version) with App Router
 - Styling: Tailwind CSS with shadcn/ui components

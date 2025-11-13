@@ -759,6 +759,7 @@ model User {
   accounts      Account[]
   sessions_auth Session[]
 
+  // Single indexes
   @@index([email])
   @@index([username])
   @@index([departmentId])
@@ -767,6 +768,12 @@ model User {
   @@index([isSuspended])
   @@index([lastLoginAt])
   @@index([deletedAt])
+
+  // Composite indexes for dashboard query optimization
+  @@index([departmentId, isActive])
+  @@index([isActive, lastLoginAt])
+  @@index([deletedAt, isActive])
+  @@index([roleId, isActive])
   @@map("users")
 }
 
@@ -918,6 +925,7 @@ model Case {
   validationExecutions ValidationExecution[]
   riskAssessments RiskAssessment[]
 
+  // Single indexes
   @@index([fileNumber])
   @@index([currentStage])
   @@index([priority])
@@ -932,6 +940,16 @@ model Case {
   @@index([deletedAt])
   @@index([ownerName])
   @@index([propertyAddress])
+
+  // Composite indexes for dashboard query optimization
+  @@index([departmentId, status])
+  @@index([status, priority])
+  @@index([departmentId, currentStage])
+  @@index([createdAt, expectedEndDate])
+  @@index([deletedAt, status])
+  @@index([deletedAt, departmentId])
+  @@index([status, currentStage])
+  @@index([departmentId, priority])
   @@map("cases")
 }
 
@@ -1088,12 +1106,18 @@ model Activity {
   caseId String?
   case   Case?   @relation(fields: [caseId], references: [id])
 
+  // Single indexes
   @@index([userId])
   @@index([action])
   @@index([entityType])
   @@index([entityId])
   @@index([createdAt])
   @@index([caseId])
+
+  // Composite indexes for dashboard query optimization
+  @@index([userId, createdAt])
+  @@index([entityType, entityId])
+  @@index([createdAt, userId])
   @@map("activities")
 }
 

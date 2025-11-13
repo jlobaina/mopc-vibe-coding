@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
+import { queryMonitor } from '@/lib/query-monitor';
 
 interface DashboardStats {
   totalCases: number
@@ -32,6 +33,9 @@ export async function GET(request: NextRequest) {
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
 
+    // Track the entire dashboard stats query
+    return await queryMonitor.trackQuery('dashboard-stats', async () => {
+
     // Build date filter
     const dateFilter: any = {};
     if (startDate && endDate) {
@@ -51,46 +55,44 @@ export async function GET(request: NextRequest) {
     const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
-    // Optimized single query approach for cases statistics
-    const caseStats = await prisma.case.groupBy({
-      by: ['status', 'priority', 'currentStage'],
-      where: {
-        ...departmentFilter,
-        deletedAt: null,
-        ...(Object.keys(dateFilter).length > 0 && { createdAt: dateFilter })
-      },
-      _count: true,
-    });
+    // Optimized query execution with comprehensive aggregations
+    const [
+      caseStats,
+      completionData,
+      monthlyCaseStats,
+      userStats,
+      activeUsersCount,
+      totalDepartments,
+      overdueCasesCount
+    ] = await Promise.all([
+      // Main case statistics - optimized single aggregation
+      prisma.case.groupBy({
+        by: ['status', 'priority', 'currentStage'],
+        where: {
+          ...departmentFilter,
+          deletedAt: null,
+          ...(Object.keys(dateFilter).length > 0 && { createdAt: dateFilter })
+        },
+        _count: true,
+      }),
 
-    // Get completion time data in a single query
-    const completionData = await prisma.case.findMany({
-      where: {
-        ...departmentFilter,
-        deletedAt: null,
-        status: 'COMPLETADO',
-        actualEndDate: { not: null },
-        ...(Object.keys(dateFilter).length > 0 && { createdAt: dateFilter })
-      },
-      select: {
-        startDate: true,
-        actualEndDate: true,
-        expectedEndDate: true
-      }
-    });
+      // Completion time data - optimized with minimal fields
+      prisma.case.findMany({
+        where: {
+          ...departmentFilter,
+          deletedAt: null,
+          status: 'COMPLETADO',
+          actualEndDate: { not: null },
+          ...(Object.keys(dateFilter).length > 0 && { createdAt: dateFilter })
+        },
+        select: {
+          startDate: true,
+          actualEndDate: true,
+          expectedEndDate: true
+        }
+      }),
 
-    // Get overdue cases data separately since it requires date comparison
-    const overdueCasesCount = await prisma.case.count({
-      where: {
-        ...departmentFilter,
-        deletedAt: null,
-        status: { notIn: ['COMPLETADO', 'ARCHIVED', 'CANCELLED'] },
-        expectedEndDate: { lt: now }
-      }
-    });
-
-    // Get monthly data in parallel with other queries
-    const [monthlyData, userStats, totalDepartments] = await Promise.all([
-      // Monthly cases data
+      // Monthly statistics - optimized aggregation using Prisma
       prisma.case.groupBy({
         by: ['createdAt'],
         where: {
@@ -101,44 +103,71 @@ export async function GET(request: NextRequest) {
           }
         },
         _count: true,
-        _min: { createdAt: true }
       }).then(data => {
-        const thisMonth = data.filter(item =>
-          item.createdAt && item.createdAt >= thisMonthStart
-        ).reduce((sum, item) => sum + item._count, 0);
+        // Group by month and count
+        const monthlyData = data.reduce((acc: { [key: string]: number }, item) => {
+          const month = item.createdAt.toISOString().substring(0, 7); // YYYY-MM
+          acc[month] = (acc[month] || 0) + item._count
+          return acc
+        }, {})
 
-        const lastMonth = data.filter(item =>
-          item.createdAt && item.createdAt >= lastMonthStart && item.createdAt < thisMonthStart
-        ).reduce((sum, item) => sum + item._count, 0);
-
-        return { thisMonth, lastMonth };
+        // Convert to array format and return last 2 months
+        return Object.entries(monthlyData)
+          .map(([month, count]) => ({ month, count: BigInt(count) }))
+          .sort((a, b) => b.month.localeCompare(a.month))
+          .slice(0, 2)
       }),
 
-      // User statistics
-      prisma.user.groupBy({
-        by: ['isActive', 'lastLoginAt'],
+      // User statistics - optimized single query
+      prisma.user.aggregate({
         where: {
           deletedAt: null,
-          ...(departmentId && { departmentId })
+          ...(departmentId && { departmentId }),
+          isActive: true
         },
-        _count: true
-      }).then(data => {
-        const totalUsers = data
-          .filter(item => item.isActive)
-          .reduce((sum, item) => sum + item._count, 0);
-
-        const activeUsers = data
-          .filter(item => item.isActive && item.lastLoginAt && item.lastLoginAt >= thirtyDaysAgo)
-          .reduce((sum, item) => sum + item._count, 0);
-
-        return { totalUsers, activeUsers };
+        _count: {
+          id: true
+        }
       }),
 
-      // Total departments
+      // Active users query - optimized with date filter
+      prisma.user.count({
+        where: {
+          deletedAt: null,
+          isActive: true,
+          lastLoginAt: {
+            gte: thirtyDaysAgo
+          },
+          ...(departmentId && { departmentId })
+        }
+      }),
+
+      // Total departments count
       prisma.department.count({
         where: { isActive: true }
+      }),
+
+      // Overdue cases count - optimized query
+      prisma.case.count({
+        where: {
+          ...departmentFilter,
+          deletedAt: null,
+          status: { notIn: ['COMPLETADO', 'ARCHIVED', 'CANCELLED'] },
+          expectedEndDate: { lt: now }
+        }
       })
     ]);
+
+    // Process monthly data from Prisma groupBy
+    const monthlyData = monthlyCaseStats.reduce((acc, item) => {
+      const monthDate = new Date(item.month + '-01');
+      if (monthDate >= thisMonthStart) {
+        acc.thisMonth += Number(item.count);
+      } else {
+        acc.lastMonth += Number(item.count);
+      }
+      return acc;
+    }, { thisMonth: 0, lastMonth: 0 });
 
     // Process case statistics from aggregated data
     const stats: DashboardStats = {
@@ -150,9 +179,9 @@ export async function GET(request: NextRequest) {
         .filter(item => !['COMPLETADO', 'ARCHIVED', 'SUSPENDED', 'CANCELLED'].includes(item.status))
         .reduce((sum, item) => sum + item._count, 0),
       overdueCases: overdueCasesCount,
-      totalUsers: userStats.totalUsers,
-      activeUsers: userStats.activeUsers,
-      totalDepartments,
+      totalUsers: userStats._count.id,
+      activeUsers: activeUsersCount,
+      totalDepartments: totalDepartments,
       avgCompletionTime: 0,
       casesThisMonth: monthlyData.thisMonth,
       casesLastMonth: monthlyData.lastMonth,
@@ -223,6 +252,9 @@ export async function GET(request: NextRequest) {
     };
 
     return NextResponse.json(statistics);
+
+    }, { departmentId, startDate, endDate }); // End of query tracking
+
   } catch (error) {
     console.error('Error fetching dashboard statistics:', error);
     return NextResponse.json(
